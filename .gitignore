@@ -1,0 +1,124 @@
+#######################################
+# Python
+#######################################
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+dist/
+build/
+
+#######################################
+# Virtual Environments
+#######################################
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+#######################################
+# Environment & Secrets
+#######################################
+.env
+.env.*
+*.env
+secrets/
+config/local.yaml
+config/local.yml
+
+#######################################
+# FastAPI / Uvicorn / Gunicorn
+#######################################
+*.log
+logs/
+uvicorn.log
+gunicorn.log
+
+#######################################
+# Databases
+#######################################
+*.db
+*.sqlite
+*.sqlite3
+data/
+db/
+instance/
+
+#######################################
+# iOS Shortcuts / Mobile Artifacts
+#######################################
+*.plist
+*.mobileconfig
+
+#######################################
+# ML / NLP / NER Artifacts
+#######################################
+models/
+checkpoints/
+runs/
+wandb/
+mlruns/
+tensorboard/
+*.pt
+*.pth
+*.onnx
+*.ckpt
+
+#######################################
+# SMS / Sensitive Data
+#######################################
+sms_raw/
+sms_samples/
+parsed_sms/
+*.csv
+*.jsonl
+
+#######################################
+# Cache & Temp
+#######################################
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tmp/
+tmp/
+*.tmp
+
+#######################################
+# Notebooks
+#######################################
+.ipynb_checkpoints/
+
+#######################################
+# OS
+#######################################
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+desktop.ini
+
+#######################################
+# IDEs
+#######################################
+.vscode/
+.idea/
+*.swp
+*.swo
+
+#######################################
+# Docker
+#######################################
+.dockerignore
+docker-compose.override.yml
+
+#######################################
+# Deployment
+#######################################
+*.pem
+*.key
+*.crt

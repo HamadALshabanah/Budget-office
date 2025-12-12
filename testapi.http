@@ -1,0 +1,7 @@
+POST http://0.0.0.0:80/sms/
+Content-Type: application/json
+
+{
+  "to": "+1234567890",
+  "message": "Hello, this is a test message."
+}
