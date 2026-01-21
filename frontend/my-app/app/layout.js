@@ -1,5 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
-import { Tajawal } from "next/font/google";
+import { Tajawal, VT323 } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "../lib/LanguageContext";
 
@@ -19,16 +19,22 @@ const tajawal = Tajawal({
   weight: ["400", "500", "700"],
 });
 
+const vt323 = VT323({
+  variable: "--font-vt323",
+  subsets: ["latin"],
+  weight: ["400"],
+});
+
 export const metadata = {
-  title: "Budget Office",
-  description: "Track your expenses easily",
+  title: "Budget Office Terminal",
+  description: "Financial Expense Tracking System v2.0",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${tajawal.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${tajawal.variable} ${vt323.variable} antialiased`}
       >
         <LanguageProvider>
             {children}

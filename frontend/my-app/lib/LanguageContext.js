@@ -48,6 +48,10 @@ const translations = {
     update: "Update",
     cancel: "Cancel",
     selectCategory: "Select category",
+    subCategoryLabel: "Sub Category",
+    subCategoryPlaceholder: "e.g. Ride-sharing",
+    classificationLabel: "Classification",
+    classificationPlaceholder: "e.g. Expense",
   },
   ar: {
     locale: "ar-SA",
@@ -93,6 +97,10 @@ const translations = {
     update: "تحديث",
     cancel: "إلغاء",
     selectCategory: "اختر الفئة",
+    subCategoryLabel: "الفئة الفرعية",
+    subCategoryPlaceholder: "مثال: توصيل",
+    classificationLabel: "التصنيف",
+    classificationPlaceholder: "مثال: مصروف",
   }
 };
 
