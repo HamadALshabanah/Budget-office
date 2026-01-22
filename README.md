@@ -193,35 +193,11 @@ Get budget status including spent amount and remaining limit.
 
 ---
 
-## 📁 Project Structure
-
-```
-budget_office/
-├── main.py              # FastAPI application
-├── models.py            # SQLAlchemy models
-├── schema.py            # Pydantic schemas
-├── invoices.db          # SQLite database
-├── frontend/
-│   └── my-app/          # Next.js frontend
-│       ├── app/
-│       │   ├── page.js          # Dashboard
-│       │   ├── rules/page.js    # Rules management
-│       │   └── globals.css      # Retro terminal styling
-│       ├── components/
-│       │   ├── BudgetOverview.js
-│       │   ├── InvoiceList.js
-│       │   └── SMSInput.js
-│       └── lib/
-│           ├── api.js           # API client
-│           └── LanguageContext.js # i18n (EN/AR)
-└── notebooks/
-    └── analysis.ipynb   # Data analysis
-```
 
 ---
 
 ## 🎨 UI Theme
-
+(built with claude opus 4.5)
 The frontend features a **dark 80's financial terminal** aesthetic:
 - Deep black backgrounds with neon cyan, magenta, and green accents
 - Scanline overlay effect
