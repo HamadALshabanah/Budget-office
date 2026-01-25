@@ -2,7 +2,7 @@
 
 A retro-styled personal finance system built with **FastAPI** and **Next.js**, designed to automatically ingest, extract, and categorize expenses from SMS transaction notifications.
 
-![Theme: Dark 80's Financial Terminal]
+![Budget Office Terminal UI](images/image.png)
 
 ## 🚀 Features
 
