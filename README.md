@@ -4,12 +4,14 @@ A retro-styled personal finance system built with **FastAPI** and **Next.js**, d
 
 ![Budget Office Terminal UI](images/image.png)
 
+![Budget Office catrogires UI](/images/categories.png)
+
 ## 🚀 Features
 
-* **SMS Parsing**: Automatically extracts *Amount* and *Merchant* from Arabic bank SMS messages
+* **SMS Parsing**: Automatically extracts *Amount* and *Merchant* from Arabic bank SMS messages from IOS shortcuts
 * **Auto-Classification**: Rule-based system to categorize merchants (e.g., "Al Nahdi" → "Health")
 * **Budget Limits**: Set spending limits per category and track remaining balance
-* **Learning System**: Unknown merchants saved as "Unclassified" - add rules for future auto-categorization
+* **Learning System**: Unknown merchants saved as "Unclassified" - add rules for future auto-categorization or immediate categorization
 * **Bilingual UI**: Full English/Arabic support with RTL layout
 * **Retro Terminal UI**: Dark 80's financial terminal aesthetic with neon accents
 
