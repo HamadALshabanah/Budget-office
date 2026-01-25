@@ -33,7 +33,7 @@ class CategoryRule(Base):
     __tablename__ = "category_rules"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    merchant_keyword: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    merchant_keywords: Mapped[str | None] = mapped_column(String, nullable=True)
     classification: Mapped[str] = mapped_column(String, nullable=False)
     main_category: Mapped[str] = mapped_column(String, nullable=False)
     sub_category: Mapped[str] = mapped_column(String, nullable=False)
@@ -52,6 +52,14 @@ def insert_invoice(data: dict) -> None:
     )
     db_session.add(invoice)
     db_session.commit()
+
+class BudgetCycle(Base):
+    __tablename__ = "budget_cycles"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    is_active: Mapped[bool] = mapped_column(default=True)
 
 def init_db() -> None:
 	Base.metadata.create_all(bind=engine)

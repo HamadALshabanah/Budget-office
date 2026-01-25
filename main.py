@@ -2,8 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List,Dict,Optional
-from models import insert_invoice, init_db,SessionLocal,CategoryRule,Invoice
+from models import insert_invoice, init_db, SessionLocal, CategoryRule, Invoice, BudgetCycle
 from sqlalchemy import func
+from datetime import datetime
 from schema import InvoiceReq, InvoiceData, CategoryRuleReq, UpdateInvoiceReq
 app = FastAPI()
 
@@ -15,7 +16,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize database tables on startup
 init_db()
 
 
@@ -65,8 +65,11 @@ def classify_sms(merchant: str):
         rules = db.query(CategoryRule).all()
         print(f"Classification rules: {rules}")
         for rule in rules:
-            if rule.merchant_keyword in merchant:
-                return rule.classification, rule.main_category, rule.sub_category
+            print(f"Checking rule: {rule.merchant_keywords} against merchant: {merchant}")
+            for rule_keyword in rule.merchant_keywords.split(","):
+                rule_keyword = rule_keyword.strip()
+                if rule_keyword in merchant:
+                    return rule.classification, rule.main_category, rule.sub_category
 
         return None,None,None
     finally:
@@ -76,7 +79,7 @@ def classify_sms(merchant: str):
 def add_category(rule:CategoryRuleReq):
     db = SessionLocal()
     category_rule = CategoryRule(
-        merchant_keyword=rule.merchant_keyword,
+        merchant_keywords=rule.merchant_keywords,
         classification=rule.classification,
         main_category=rule.main_category,
         sub_category=rule.sub_category,
@@ -132,7 +135,7 @@ def get_rule(rule_id: int):
         return {"status": "Rule not found"}
     return {
         "id": rule.id,
-        "merchant_keyword": rule.merchant_keyword,
+        "merchant_keywords": rule.merchant_keywords,
         "classification": rule.classification,
         "main_category": rule.main_category,
         "sub_category": rule.sub_category,
@@ -178,7 +181,7 @@ def update_rule(rule_id:int, req: CategoryRuleReq):
     if not rule:
         return {"status": "Rule not found"}
     
-    rule.merchant_keyword = req.merchant_keyword
+    rule.merchant_keywords = req.merchant_keywords
     rule.classification = req.classification
     rule.main_category = req.main_category
     rule.sub_category = req.sub_category
@@ -186,6 +189,17 @@ def update_rule(rule_id:int, req: CategoryRuleReq):
     db.commit()
     db.close()
     return {"status": f"Rule {rule_id} updated successfully"}
+
+@app.delete("/invoice/{invoice_id}")
+def delete_invoice(invoice_id: int):
+    db = SessionLocal()
+    invoice = db.get(Invoice, invoice_id)
+    if not invoice:
+        return {"status": "Invoice not found"}
+    db.delete(invoice)
+    db.commit()
+    db.close()
+    return {"status": f"Invoice {invoice_id} deleted successfully"}
 
 @app.delete("/rules/{rule_id}")
 def delete_rule(rule_id: int):
@@ -209,6 +223,44 @@ def get_category_limit(category: str):
         "main_category": rule.main_category,
         "category_limit": rule.category_limit
     }
+
+@app.post("/cycle/start")
+def start_new_cycle(start_date: Optional[str] = None):
+    """Start a new budget cycle (resets spending tracking)
+    
+    Args:
+        start_date: Optional custom start date in format YYYY-MM-DD. Defaults to now.
+    """
+    db = SessionLocal()
+    try:
+        # End any active cycles
+        active_cycles = db.query(BudgetCycle).filter(BudgetCycle.is_active == True).all()
+        for cycle in active_cycles:
+            cycle.is_active = False
+            cycle.end_date = datetime.now()
+        
+        # Parse custom start date or use now
+        if start_date:
+            try:
+                cycle_start = datetime.strptime(start_date, "%Y-%m-%d")
+            except ValueError:
+                return {"status": "error", "message": "Invalid date format. Use YYYY-MM-DD"}
+        else:
+            cycle_start = datetime.now()
+        
+        # Create new cycle
+        new_cycle = BudgetCycle(start_date=cycle_start, is_active=True)
+        db.add(new_cycle)
+        db.commit()
+        
+        return {
+            "status": "success",
+            "message": "New budget cycle started",
+            "cycle_id": new_cycle.id,
+            "start_date": new_cycle.start_date.isoformat()
+        }
+    finally:
+        db.close()
     
 # Endpoint gets the remaining limit for a given main category
 @app.get("/category/remaining_limit/{category}")
@@ -232,3 +284,81 @@ def get_remaining_limit(category: str):
         "total_spent": total_spent,
         "remaining_limit": remaining_limit
     }
+    
+    
+@app.get("/cycle/history")
+def get_cycle_history(limit: int = 12):
+    """Get past budget cycles"""
+    db = SessionLocal()
+    try:
+        cycles = db.query(BudgetCycle).order_by(BudgetCycle.start_date.desc()).limit(limit).all()
+        
+        result = []
+        for cycle in cycles:
+            # Get total spent in this cycle
+            end = cycle.end_date or datetime.utcnow()
+            total_spent = db.query(func.sum(Invoice.amount)).filter(
+                Invoice.created_at >= cycle.start_date,
+                Invoice.created_at <= end,
+                Invoice.extraction_status == "success"
+            ).scalar() or 0
+            
+            result.append({
+                "id": cycle.id,
+                "start_date": cycle.start_date.isoformat(),
+                "end_date": cycle.end_date.isoformat() if cycle.end_date else None,
+                "is_active": cycle.is_active,
+                "total_spent": round(total_spent, 2)
+            })
+        
+        return result
+    finally:
+        db.close()
+        
+@app.get("/cycle/current")
+def get_current_cycle():
+    """Get the current active budget cycle"""
+    db = SessionLocal()
+    try:
+        cycle = db.query(BudgetCycle).filter(BudgetCycle.is_active == True).first()
+        
+        if not cycle:
+            return {"status": "no_active_cycle"}
+        
+        # Calculate days in cycle
+        days_elapsed = (datetime.now() - cycle.start_date.replace(tzinfo=None)).days
+        days_remaining = max(0, 30 - days_elapsed)
+        
+        return {
+            "id": cycle.id,
+            "start_date": cycle.start_date.isoformat(),
+            "is_active": cycle.is_active,
+            "days_elapsed": days_elapsed,
+            "days_remaining": days_remaining
+        }
+    finally:
+        db.close()
+
+@app.get("/category/analysis/{category}")
+def category_analysis(category: str):
+    db = SessionLocal()
+    total_spent = db.query(func.sum(Invoice.amount)).filter(
+        Invoice.main_category == category,
+        Invoice.extraction_status == "success"
+    ).scalar() or 0
+    
+    invoice_count = db.query(func.count(Invoice.id)).filter(
+        Invoice.main_category == category,
+        Invoice.extraction_status == "success"
+    ).scalar() or 0
+    
+    average_spent = total_spent / invoice_count if invoice_count > 0 else 0
+    
+    db.close()
+    return {
+        "main_category": category,
+        "total_spent": total_spent,
+        "invoice_count": invoice_count,
+        "average_spent": average_spent
+    }
+    

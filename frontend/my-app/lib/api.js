@@ -62,3 +62,34 @@ export async function updateInvoice(invoiceId, data) {
     });
     return res.json();
 }
+
+export async function fetchCategoryAnalysis(category) {
+    const res = await fetch(`${API_URL}/category/analysis/${encodeURIComponent(category)}`);
+    return res.json();
+}
+
+export async function deleteInvoice(invoiceId) {
+    const res = await fetch(`${API_URL}/invoice/${invoiceId}`, {
+        method: 'DELETE',
+    });
+    return res.json();
+}
+
+// Budget Cycle APIs
+export async function startNewCycle(startDate = null) {
+    const url = startDate 
+        ? `${API_URL}/cycle/start?start_date=${startDate}`
+        : `${API_URL}/cycle/start`;
+    const res = await fetch(url, { method: 'POST' });
+    return res.json();
+}
+
+export async function getCurrentCycle() {
+    const res = await fetch(`${API_URL}/cycle/current`);
+    return res.json();
+}
+
+export async function getCycleHistory(limit = 12) {
+    const res = await fetch(`${API_URL}/cycle/history?limit=${limit}`);
+    return res.json();
+}

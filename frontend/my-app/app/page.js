@@ -5,6 +5,7 @@ import { fetchInvoices } from '../lib/api';
 import SMSInput from '../components/SMSInput';
 import InvoiceList from '../components/InvoiceList';
 import BudgetOverview from '../components/BudgetOverview';
+import BudgetCycle from '../components/BudgetCycle';
 import { LayoutDashboard, Receipt, Settings, Globe, Terminal } from 'lucide-react';
 import { useLanguage } from '../lib/LanguageContext';
 
@@ -59,6 +60,11 @@ export default function Home() {
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
         
+        {/* Budget Cycle Section */}
+        <section className="mb-6">
+            <BudgetCycle onCycleChange={handleRefresh} />
+        </section>
+
         {/* Budget Overview Section */}
         <section className="mb-8">
              <h2 className="text-xs font-bold text-cyan-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">

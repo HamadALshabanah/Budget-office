@@ -24,7 +24,7 @@ class InvoiceData(BaseModel):
     
 
 class CategoryRuleReq(BaseModel):
-    merchant_keyword: str = Field(..., description="The keyword to match (e.g., 'Al Nahdi')")
+    merchant_keywords: str = Field(..., description="The keyword to match (e.g., 'Al Nahdi')")
     classification: str = Field(..., description="High level group (e.g., 'Necessities')")
     main_category: str = Field(..., description="Main function (e.g., 'Health')")
     sub_category: str = Field(..., description="Specific industry (e.g., 'Pharmacy')")

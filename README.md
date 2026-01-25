@@ -126,7 +126,7 @@ Create a new classification rule.
 **Request:**
 ```json
 {
-  "merchant_keyword": "Starbucks",
+  "merchant_keywords": "Starbucks",
   "classification": "Expense",
   "main_category": "Food",
   "sub_category": "Coffee",
@@ -146,7 +146,7 @@ Update an existing rule.
 **Request:**
 ```json
 {
-  "merchant_keyword": "Starbucks",
+  "merchant_keywords": "Starbucks",
   "classification": "Expense",
   "main_category": "Food",
   "sub_category": "Coffee",

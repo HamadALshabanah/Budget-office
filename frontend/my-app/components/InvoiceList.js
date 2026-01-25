@@ -1,8 +1,8 @@
 'use client';
 import { useState } from 'react';
-import { BadgeCheck, BadgeAlert, ShoppingBag, Calendar, Pencil, X, Save, FileText } from 'lucide-react';
+import { BadgeCheck, BadgeAlert, ShoppingBag, Calendar, Pencil, X, Save, FileText, Trash2 } from 'lucide-react';
 import { useLanguage } from '../lib/LanguageContext';
-import { updateInvoice, fetchCategories } from '../lib/api';
+import { updateInvoice, fetchCategories, deleteInvoice } from '../lib/api';
 
 export default function InvoiceList({ invoices, onUpdate }) {
   const { t } = useLanguage();
@@ -28,6 +28,16 @@ export default function InvoiceList({ invoices, onUpdate }) {
         sub_category: editingInvoice.sub_category || ''
       });
       setEditingInvoice(null);
+      if (onUpdate) onUpdate();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDelete = async (invoiceId) => {
+    if (!confirm(t('confirmDeleteInvoice'))) return;
+    try {
+      await deleteInvoice(invoiceId);
       if (onUpdate) onUpdate();
     } catch (err) {
       console.error(err);
@@ -96,6 +106,12 @@ export default function InvoiceList({ invoices, onUpdate }) {
                 className="p-1.5 text-gray-600 hover:text-cyan-400 hover:bg-cyan-500/10 rounded border border-transparent hover:border-cyan-500/30 transition-all opacity-0 group-hover:opacity-100"
               >
                 <Pencil className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => handleDelete(invoice.id)}
+                className="p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded border border-transparent hover:border-red-500/30 transition-all opacity-0 group-hover:opacity-100"
+              >
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           </div>
