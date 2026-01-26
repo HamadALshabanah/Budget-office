@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react';
 import { getCurrentCycle, startNewCycle, getCycleHistory } from '../lib/api';
 import { useLanguage } from '../lib/LanguageContext';
-import { Calendar, RefreshCw, History, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, RefreshCw, History, X, ChevronDown, ChevronUp, BarChart3 } from 'lucide-react';
+import CycleAnalysisModal from './CycleAnalysisModal';
 
 const translations = {
     en: {
@@ -21,6 +22,7 @@ const translations = {
         start: "Start with this date",
         newCycle: "New Budget Cycle",
         active: "Active",
+        viewAnalysis: "View Analysis",
     },
     ar: {
         title: "دورة الميزانية",
@@ -38,6 +40,7 @@ const translations = {
         start: "ابدأ بهذا التاريخ",
         newCycle: "دورة ميزانية جديدة",
         active: "نشطة",
+        viewAnalysis: "عرض التحليل",
     },
 };
 
@@ -48,6 +51,7 @@ export default function BudgetCycle({ onCycleChange }) {
     const [showHistory, setShowHistory] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [customDate, setCustomDate] = useState('');
+    const [selectedCycleId, setSelectedCycleId] = useState(null);
     const { language } = useLanguage();
     const t = translations[language];
     const isRTL = language === 'ar';
@@ -86,7 +90,7 @@ export default function BudgetCycle({ onCycleChange }) {
 
     const formatDate = (dateStr) => {
         if (!dateStr) return '-';
-        return new Date(dateStr).toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
+        return new Date(dateStr).toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
             year: 'numeric',
@@ -190,9 +194,18 @@ export default function BudgetCycle({ onCycleChange }) {
                                         {h.end_date && ` → ${formatDate(h.end_date)}`}
                                     </span>
                                 </div>
-                                <span className="text-amber-400 font-mono text-sm">
-                                    {formatCurrency(h.total_spent)} {t.spent}
-                                </span>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-amber-400 font-mono text-sm">
+                                        {formatCurrency(h.total_spent)} {t.spent}
+                                    </span>
+                                    <button
+                                        onClick={() => setSelectedCycleId(h.id)}
+                                        className="p-2 bg-fuchsia-500/10 hover:bg-fuchsia-500/20 rounded border border-fuchsia-500/30 transition-all group"
+                                        title={t.viewAnalysis}
+                                    >
+                                        <BarChart3 className="w-4 h-4 text-fuchsia-400 group-hover:text-fuchsia-300" />
+                                    </button>
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -250,6 +263,14 @@ export default function BudgetCycle({ onCycleChange }) {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Cycle Analysis Modal */}
+            {selectedCycleId && (
+                <CycleAnalysisModal
+                    cycleId={selectedCycleId}
+                    onClose={() => setSelectedCycleId(null)}
+                />
             )}
         </div>
     );

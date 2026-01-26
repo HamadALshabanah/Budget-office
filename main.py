@@ -239,14 +239,7 @@ def start_new_cycle(start_date: Optional[str] = None):
             cycle.is_active = False
             cycle.end_date = datetime.now()
         
-        # Parse custom start date or use now
-        if start_date:
-            try:
-                cycle_start = datetime.strptime(start_date, "%Y-%m-%d")
-            except ValueError:
-                return {"status": "error", "message": "Invalid date format. Use YYYY-MM-DD"}
-        else:
-            cycle_start = datetime.now()
+        cycle_start = datetime.strptime(start_date, "%Y-%m-%d")
         
         # Create new cycle
         new_cycle = BudgetCycle(start_date=cycle_start, is_active=True)
@@ -362,3 +355,65 @@ def category_analysis(category: str):
         "average_spent": average_spent
     }
     
+@app.get("/cycle/{cycle_id}/analysis")
+def cycle_analysis(cycle_id: int):
+    db = SessionLocal()
+    
+    cycle = db.get(BudgetCycle, cycle_id)
+    
+    invoices = db.query(Invoice).filter(
+        Invoice.created_at >= cycle.start_date,
+        Invoice.created_at <= cycle.end_date,
+        Invoice.extraction_status == "success"
+    ).all()
+    
+    
+    total_spent = sum(inv.amount for inv in invoices)
+    transaction_count = len(invoices)
+    average_transaction = total_spent / transaction_count if transaction_count > 0 else 0
+    
+    total_budget  = db.query(func.sum(CategoryRule.category_limit)).scalar() or 0
+    
+    category_spending = {}
+    for inv in invoices:
+        cat = inv.main_category
+        category_spending[cat] = category_spending.get(cat, 0) + (inv.amount or 0)
+    
+    category_breakdown = []
+    for cat, spent in sorted(category_spending.items(), key=lambda x: x[1], reverse=True):
+            rule = db.query(CategoryRule).filter(CategoryRule.main_category == cat).first()
+            limit = rule.category_limit if rule else None
+            category_breakdown.append({
+                "category": cat,
+                "spent": round(spent, 2),
+                "limit": limit,
+                "percentage_of_total": round((spent / total_spent * 100), 1) if total_spent > 0 else 0,
+                "percentage_of_limit": round((spent / limit * 100), 1) if limit else None
+            })
+        
+        # Top merchants
+    merchant_spending = {}
+    for inv in invoices:
+            if inv.merchant:
+                merchant_spending[inv.merchant] = merchant_spending.get(inv.merchant, 0) + (inv.amount or 0)
+        
+    top_merchants = [
+            {"merchant": m, "spent": round(s, 2)}
+            for m, s in sorted(merchant_spending.items(), key=lambda x: x[1], reverse=True)[:5]
+        ]
+    db.close()
+
+    return {
+            "cycle_id": cycle.id,
+            "start_date": cycle.start_date.isoformat(),
+            "end_date": cycle.end_date.isoformat() if cycle.end_date else None,
+            "is_active": cycle.is_active,
+            "total_spent": round(total_spent, 2),
+            "total_budget": round(total_budget, 2),
+            "remaining_budget": round(total_budget - total_spent, 2),
+            "budget_percentage_used": round((total_spent / total_budget * 100), 1) if total_budget > 0 else 0,
+            "transaction_count": transaction_count,
+            "average_transaction": round(average_transaction, 2),
+            "category_breakdown": category_breakdown,
+            "top_merchants": top_merchants,
+        }

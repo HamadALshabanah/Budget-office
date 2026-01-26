@@ -93,3 +93,8 @@ export async function getCycleHistory(limit = 12) {
     const res = await fetch(`${API_URL}/cycle/history?limit=${limit}`);
     return res.json();
 }
+
+export async function getCycleAnalysis(cycleId) {
+    const res = await fetch(`${API_URL}/cycle/${cycleId}/analysis`);
+    return res.json();
+}
