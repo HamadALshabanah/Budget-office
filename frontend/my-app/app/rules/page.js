@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Trash2, Save, ArrowRight, Pencil, X, Database, Tag } from 'lucide-react';
-import { fetchRules, addRule, deleteRule, updateRule } from '../../lib/api';
+import { ArrowLeft, Plus, Trash2, Save, ArrowRight, Pencil, X, Database, Tag, RefreshCw, Check } from 'lucide-react';
+import { fetchRules, addRule, deleteRule, updateRule, categorizeInvoices } from '../../lib/api';
 import { useLanguage } from '../../lib/LanguageContext';
 
 // Reusable Keywords Input Component
@@ -100,6 +100,10 @@ export default function RulesPage() {
     // Edit Rule State
     const [editingRule, setEditingRule] = useState(null);
     const [editKeywords, setEditKeywords] = useState([]);
+    
+    // Recategorize State
+    const [recategorizing, setRecategorizing] = useState(false);
+    const [recategorizeResult, setRecategorizeResult] = useState(null);
 
     useEffect(() => {
         loadRules();
@@ -186,16 +190,52 @@ export default function RulesPage() {
         }
     };
 
+    const handleRecategorize = async () => {
+        setRecategorizing(true);
+        setRecategorizeResult(null);
+        try {
+            const result = await categorizeInvoices();
+            setRecategorizeResult(result);
+            // Auto-hide success message after 3 seconds
+            setTimeout(() => setRecategorizeResult(null), 3000);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setRecategorizing(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-[#0a0a0f] font-mono text-gray-200 p-8">
             <div className="max-w-4xl mx-auto">
-                <div className="mb-8 flex items-center gap-4">
-                    <Link href="/" className="p-2 hover:bg-[#1a1a25] rounded border border-[#2a2a3a] hover:border-cyan-500/30 transition-all hover:shadow-[0_0_10px_rgba(0,255,255,0.2)]">
-                        {isRTL ? <ArrowRight className="w-5 h-5 text-cyan-400" /> : <ArrowLeft className="w-5 h-5 text-cyan-400" />}
-                    </Link>
-                    <div>
-                      <h1 className="text-2xl font-bold text-cyan-400 text-glow-cyan">{t('rulesTitle')}</h1>
-                      <p className="text-xs text-gray-500 uppercase tracking-widest">Category Configuration Module</p>
+                <div className="mb-8 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <Link href="/" className="p-2 hover:bg-[#1a1a25] rounded border border-[#2a2a3a] hover:border-cyan-500/30 transition-all hover:shadow-[0_0_10px_rgba(0,255,255,0.2)]">
+                            {isRTL ? <ArrowRight className="w-5 h-5 text-cyan-400" /> : <ArrowLeft className="w-5 h-5 text-cyan-400" />}
+                        </Link>
+                        <div>
+                          <h1 className="text-2xl font-bold text-cyan-400 text-glow-cyan">{t('rulesTitle')}</h1>
+                          <p className="text-xs text-gray-500 uppercase tracking-widest">Category Configuration Module</p>
+                        </div>
+                    </div>
+                    
+                    {/* Apply Rules Button */}
+                    <div className="flex items-center gap-3">
+                        {recategorizeResult && (
+                            <span className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 border border-emerald-500/30 rounded text-emerald-400 text-sm animate-pulse">
+                                <Check className="w-4 h-4" />
+                                {t('appliedSuccess')} {recategorizeResult.updated_invoices} {t('invoices')}
+                            </span>
+                        )}
+                        <button
+                            onClick={handleRecategorize}
+                            disabled={recategorizing}
+                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 disabled:opacity-50 text-white rounded-lg font-bold text-sm transition-all border border-fuchsia-400/50 shadow-[0_0_15px_rgba(255,0,255,0.3)]"
+                            title={t('applyRulesDesc')}
+                        >
+                            <RefreshCw className={`w-4 h-4 ${recategorizing ? 'animate-spin' : ''}`} />
+                            {recategorizing ? t('applying') : t('applyRules')}
+                        </button>
                     </div>
                 </div>
 

@@ -278,7 +278,27 @@ def get_remaining_limit(category: str):
         "remaining_limit": remaining_limit
     }
     
-    
+
+@app.post("/invoices/categorize")
+def categorize_invoices():
+    """Re-categorize all invoices based on current rules"""
+    db = SessionLocal()
+    invoices = db.query(Invoice).all()
+    updated_count = 0
+    for invoice in invoices:
+        classification, main_cat, sub_cat = classify_sms(invoice.merchant)
+        if (invoice.classification != classification or 
+            invoice.main_category != main_cat or 
+            invoice.sub_category != sub_cat):
+            invoice.classification = classification
+            invoice.main_category = main_cat
+            invoice.sub_category = sub_cat
+            updated_count += 1
+    db.commit()
+    db.close()
+    return {"status": "success", "updated_invoices": updated_count}
+
+
 @app.get("/cycle/history")
 def get_cycle_history(limit: int = 12):
     """Get past budget cycles"""

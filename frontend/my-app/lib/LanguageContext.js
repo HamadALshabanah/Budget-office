@@ -53,6 +53,11 @@ const translations = {
     subCategoryPlaceholder: "e.g. Ride-sharing",
     classificationLabel: "Classification",
     classificationPlaceholder: "e.g. Expense",
+    applyRules: "Apply Rules",
+    applyRulesDesc: "Re-categorize all invoices",
+    applying: "Applying...",
+    appliedSuccess: "Updated",
+    invoices: "invoices",
   },
   ar: {
     locale: "ar-SA",
@@ -103,6 +108,11 @@ const translations = {
     subCategoryPlaceholder: "مثال: توصيل",
     classificationLabel: "التصنيف",
     classificationPlaceholder: "مثال: مصروف",
+    applyRules: "تطبيق القواعد",
+    applyRulesDesc: "إعادة تصنيف جميع الفواتير",
+    applying: "جاري التطبيق...",
+    appliedSuccess: "تم تحديث",
+    invoices: "فاتورة",
   }
 };
 

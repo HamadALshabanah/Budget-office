@@ -98,3 +98,8 @@ export async function getCycleAnalysis(cycleId) {
     const res = await fetch(`${API_URL}/cycle/${cycleId}/analysis`);
     return res.json();
 }
+
+export async function categorizeInvoices() {
+    const res = await fetch(`${API_URL}/invoices/categorize`, { method: 'POST' });
+    return res.json();
+}
