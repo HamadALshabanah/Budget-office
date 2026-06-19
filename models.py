@@ -60,6 +60,11 @@ class BudgetCycle(Base):
     start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_active: Mapped[bool] = mapped_column(default=True)
-
+class TransferLimitReq(Base):
+    __tablename__ = "transfer_limits"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    from_category: Mapped[str] = mapped_column(String, nullable=False)
+    to_category: Mapped[str] = mapped_column(String, nullable=False)
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
 def init_db() -> None:
 	Base.metadata.create_all(bind=engine)
