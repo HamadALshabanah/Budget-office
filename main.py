@@ -6,6 +6,7 @@ from models import insert_invoice, init_db, SessionLocal, CategoryRule, Invoice,
 from sqlalchemy import func, cast, Date
 from datetime import datetime, timedelta
 from schema import InvoiceReq, InvoiceData, CategoryRuleReq, UpdateInvoiceReq
+from user_session import router as auth_router
 app = FastAPI()
 
 app.add_middleware(
@@ -15,6 +16,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(auth_router)
 
 init_db()
 
@@ -253,17 +256,20 @@ def start_new_cycle(start_date: Optional[str] = None,end_date: Optional[str] = N
         
     cycle_start = datetime.strptime(start_date, "%Y-%m-%d") if start_date else datetime.now()
     cycle_end = datetime.strptime(end_date, "%Y-%m-%d") if end_date else None
-        # Create new cycle
+    # Create new cycle
     new_cycle = BudgetCycle(start_date=cycle_start, end_date=cycle_end, is_active=True)
     db.add(new_cycle)
     db.commit()
+    db.refresh(new_cycle)
+    cycle_id = new_cycle.id
+    start_date_iso = new_cycle.start_date.isoformat()
     db.close()
 
     return {
             "status": "success",
             "message": "New budget cycle started",
-            "cycle_id": new_cycle.id,
-            "start_date": new_cycle.start_date.isoformat()
+            "cycle_id": cycle_id,
+            "start_date": start_date_iso,
         }
 
 @app.post("/cycles/end")

@@ -1,85 +1,85 @@
 @import "tailwindcss";
 
 :root {
-  /* Base surfaces — warm terracotta notebook cover */
-  --base: #8C5A47;
-  --base-subtle: #EDE5D9;
-  --surface: #FAF6EE;
-  --surface-raised: #FCFAF2;
-  --surface-inset: #F3EDE0;
+  /* Base — deep earthy moss-green leather notebook cover */
+  --base: #3A4A35;
+  --base-subtle: #D8DCCB;
+  --surface: #F7F3E8;          /* aged cream paper */
+  --surface-raised: #FBF8F0;
+  --surface-inset: #EFE9D8;
 
-  /* Text — dark sepia ink on paper */
-  --text-primary: #2B211D;
-  --text-secondary: #5C4A43;
-  --text-tertiary: #8C756E;
-  --text-muted: #B09B94;
+  /* Text — dark walnut ink on paper */
+  --text-primary: #2A2A20;
+  --text-secondary: #4F4A3C;
+  --text-tertiary: #7A7464;
+  --text-muted: #A8A294;
 
   /* Borders — soft pencil lines */
-  --border: rgba(43, 33, 29, 0.12);
-  --border-strong: rgba(43, 33, 29, 0.22);
-  --border-focus: #556B2F;
+  --border: rgba(42, 42, 32, 0.14);
+  --border-strong: rgba(42, 42, 32, 0.26);
+  --border-focus: #5C6E3D;
 
-  /* Olive/Forest Green — primary accent */
-  --accent: #556B2F;
-  --accent-dim: rgba(85, 107, 47, 0.12);
-  --accent-mid: #6B8E23;
+  /* Forest green — primary accent (earthy, harmonizes with cover) */
+  --accent: #5C6E3D;
+  --accent-dim: rgba(92, 110, 61, 0.14);
+  --accent-mid: #6B8E4E;
 
-  /* Amount — deep terracotta ink */
-  --amount: #A0522D;
-  --amount-dim: rgba(160, 82, 45, 0.08);
+  /* Amount — deep moss ink */
+  --amount: #4A5D3A;
+  --amount-dim: rgba(74, 93, 58, 0.10);
 
-  /* Danger — warm firebrick red */
-  --danger: #B22222;
-  --danger-dim: rgba(178, 34, 34, 0.08);
+  /* Danger — muted brick red */
+  --danger: #9C3A3A;
+  --danger-dim: rgba(156, 58, 58, 0.09);
 
   /* Warning — warm ochre/amber */
-  --warning: #CD853F;
-  --warning-dim: rgba(205, 133, 63, 0.08);
+  --warning: #B8853A;
+  --warning-dim: rgba(184, 133, 58, 0.10);
 
   /* Gauge fills */
-  --fill-healthy: rgba(85, 107, 47, 0.08);
-  --fill-caution: rgba(205, 133, 63, 0.06);
-  --fill-danger: rgba(178, 34, 34, 0.06);
+  --fill-healthy: rgba(92, 110, 61, 0.10);
+  --fill-caution: rgba(184, 133, 58, 0.08);
+  --fill-danger: rgba(156, 58, 58, 0.07);
 
-  /* Notebook shadows — stacked paper effect */
-  --shadow-sm: 0 1px 3px rgba(43, 33, 29, 0.08);
-  --shadow-md: 0 2px 8px rgba(43, 33, 29, 0.10);
-  --shadow-lg: 0 4px 16px rgba(43, 33, 29, 0.12);
+  /* Notebook shadows — stacked paper on green leather */
+  --shadow-sm: 0 1px 3px rgba(42, 42, 32, 0.10);
+  --shadow-md: 0 2px 8px rgba(42, 42, 32, 0.12);
+  --shadow-lg: 0 6px 20px rgba(42, 42, 32, 0.16);
 
-  --glow-accent: 0 0 0 3px rgba(85, 107, 47, 0.20);
-  --glow-danger: 0 0 0 3px rgba(178, 34, 34, 0.15);
+  --glow-accent: 0 0 0 3px rgba(92, 110, 61, 0.22);
+  --glow-danger: 0 0 0 3px rgba(156, 58, 58, 0.16);
 }
 
 [data-theme="light"] {
-  --base: #8C5A47;
-  --base-subtle: #EDE5D9;
-  --surface: #FAF6EE;
-  --surface-raised: #FCFAF2;
-  --surface-inset: #F3EDE0;
-  --text-primary: #2B211D;
-  --text-secondary: #5C4A43;
-  --text-tertiary: #8C756E;
-  --text-muted: #B09B94;
-  --border: rgba(43, 33, 29, 0.12);
-  --border-strong: rgba(43, 33, 29, 0.22);
-  --border-focus: #556B2F;
-  --accent: #556B2F;
-  --accent-dim: rgba(85, 107, 47, 0.12);
-  --accent-mid: #6B8E23;
-  --amount: #A0522D;
-  --amount-dim: rgba(160, 82, 45, 0.08);
-  --danger: #B22222;
-  --danger-dim: rgba(178, 34, 34, 0.08);
-  --warning: #CD853F;
-  --warning-dim: rgba(205, 133, 63, 0.08);
-  --fill-healthy: rgba(85, 107, 47, 0.08);
-  --fill-caution: rgba(205, 133, 63, 0.06);
-  --fill-danger: rgba(178, 34, 34, 0.06);
-  --shadow-sm: 0 1px 3px rgba(43, 33, 29, 0.08);
-  --shadow-md: 0 2px 8px rgba(43, 33, 29, 0.10);
-  --shadow-lg: 0 4px 16px rgba(43, 33, 29, 0.12);
-  --glow-accent: 0 0 0 3px rgba(85, 107, 47, 0.15);
-  --glow-danger: 0 0 0 3px rgba(178, 34, 34, 0.12);
+  --base: #3A4A35;
+  --base-subtle: #D8DCCB;
+  --surface: #F7F3E8;
+  --surface-raised: #FBF8F0;
+  --surface-inset: #EFE9D8;
+  --text-primary: #2A2A20;
+  --text-secondary: #4F4A3C;
+  --text-tertiary: #7A7464;
+  --text-muted: #A8A294;
+  --border: rgba(42, 42, 32, 0.14);
+  --border-strong: rgba(42, 42, 32, 0.26);
+  --border-focus: #5C6E3D;
+  --accent: #5C6E3D;
+  --accent-dim: rgba(92, 110, 61, 0.14);
+  --accent-mid: #6B8E4E;
+  --amount: #4A5D3A;
+  --amount-dim: rgba(74, 93, 58, 0.10);
+  --danger: #9C3A3A;
+  --danger-dim: rgba(156, 58, 58, 0.09);
+  --warning: #B8853A;
+  --warning-dim: rgba(184, 133, 58, 0.10);
+  --fill-healthy: rgba(92, 110, 61, 0.10);
+  --fill-caution: rgba(184, 133, 58, 0.08);
+  --fill-danger: rgba(156, 58, 58, 0.07);
+  --shadow-sm: 0 1px 3px rgba(42, 42, 32, 0.10);
+  --shadow-md: 0 2px 8px rgba(42, 42, 32, 0.12);
+  --shadow-lg: 0 6px 20px rgba(42, 42, 32, 0.16);
+  --glow-accent: 0 0 0 3px rgba(92, 110, 61, 0.20);
+  --glow-danger: 0 0 0 3px rgba(156, 58, 58, 0.14);
 }
 
 @theme inline {
@@ -406,70 +406,65 @@ html[dir="rtl"] body {
 
 /* ===== NOTEBOOK STYLING ===== */
 
-/* Notebook body background — warm terracotta cover with subtle texture */
+/* Notebook body background — deep moss-green leather cover with subtle weave texture */
 body {
   background: var(--base) !important;
   background-image:
+    radial-gradient(circle at 20% 0%, rgba(255, 255, 255, 0.04), transparent 50%),
     repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 31px,
-      rgba(255, 255, 255, 0.04) 31px,
-      rgba(255, 255, 255, 0.04) 32px
+      45deg,
+      rgba(255, 255, 255, 0.015) 0,
+      rgba(255, 255, 255, 0.015) 2px,
+      transparent 2px,
+      transparent 6px
     ) !important;
 }
 
-/* Notebook page — paper-like card with ruled lines */
+/* Notebook page — aged cream paper card with soft stacked shadow */
 .notebook-page {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
   box-shadow:
-    0 1px 4px rgba(43, 33, 29, 0.10),
-    0 4px 12px rgba(43, 33, 29, 0.06),
-    inset 0 0 40px rgba(85, 107, 47, 0.02);
+    0 1px 2px rgba(42, 42, 32, 0.08),
+    0 4px 10px rgba(42, 42, 32, 0.10),
+    inset 0 0 60px rgba(92, 110, 61, 0.03);
   position: relative;
-  padding-left: 36px;
+  padding-left: 30px;
   overflow: hidden;
 }
 
-/* Spiral binding holes on the left */
+/* Stitched binding marks on the left — refined journal seam */
 .notebook-page::before {
   content: '';
   position: absolute;
-  left: 12px;
-  top: 0;
-  bottom: 0;
-  width: 12px;
-  background-image: radial-gradient(
-    circle,
-    var(--base) 3px,
-    transparent 3px
-  );
-  background-size: 12px 32px;
-  background-position: 0 8px;
-  background-repeat: repeat-y;
-  opacity: 0.5;
+  left: 10px;
+  top: 8px;
+  bottom: 8px;
+  width: 8px;
+  border-left: 1px dashed rgba(92, 110, 61, 0.35);
+  border-right: 1px dashed rgba(92, 110, 61, 0.20);
+  opacity: 0.7;
 }
 
-/* Red margin line (like notebook paper) */
+/* Soft moss-green margin rule (like a journal) */
 .notebook-page::after {
   content: '';
   position: absolute;
-  left: 28px;
+  left: 24px;
   top: 0;
   bottom: 0;
-  width: 2px;
-  background: rgba(178, 34, 34, 0.15);
+  width: 1px;
+  background: rgba(92, 110, 61, 0.18);
 }
 
-/* Ruled lines inside notebook pages */
+/* Ruled lines inside notebook pages — faint green */
 .notebook-lines {
   background-image: repeating-linear-gradient(
     transparent,
     transparent 31px,
-    rgba(85, 107, 47, 0.08) 31px,
-    rgba(85, 107, 47, 0.08) 32px
+    rgba(92, 110, 61, 0.07) 31px,
+    rgba(92, 110, 61, 0.07) 32px
   );
   background-size: 100% 32px;
 }
@@ -478,52 +473,46 @@ body {
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
   box-shadow:
-    0 1px 4px rgba(43, 33, 29, 0.10),
-    0 4px 12px rgba(43, 33, 29, 0.06);
+    0 1px 2px rgba(42, 42, 32, 0.08),
+    0 4px 10px rgba(42, 42, 32, 0.10);
   position: relative;
-  padding-left: 36px;
+  padding-left: 30px;
   overflow: hidden;
 }
 
 .panel::before {
   content: '';
   position: absolute;
-  left: 12px;
-  top: 0;
-  bottom: 0;
-  width: 12px;
-  background-image: radial-gradient(
-    circle,
-    var(--base) 3px,
-    transparent 3px
-  );
-  background-size: 12px 32px;
-  background-position: 0 8px;
-  background-repeat: repeat-y;
-  opacity: 0.5;
+  left: 10px;
+  top: 8px;
+  bottom: 8px;
+  width: 8px;
+  border-left: 1px dashed rgba(92, 110, 61, 0.35);
+  border-right: 1px dashed rgba(92, 110, 61, 0.20);
+  opacity: 0.7;
 }
 
 .panel::after {
   content: '';
   position: absolute;
-  left: 28px;
+  left: 24px;
   top: 0;
   bottom: 0;
-  width: 2px;
-  background: rgba(178, 34, 34, 0.15);
+  width: 1px;
+  background: rgba(92, 110, 61, 0.18);
 }
 
 /* Gauge — notebook style */
 .gauge {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
   position: relative;
   overflow: hidden;
   transition: border-color 0.15s ease;
-  box-shadow: 0 1px 3px rgba(43, 33, 29, 0.06);
+  box-shadow: 0 1px 3px rgba(42, 42, 32, 0.08);
 }
 
 .gauge:hover {
@@ -534,9 +523,9 @@ body {
 .input-field {
   background: var(--surface-inset);
   border: 1px solid var(--border);
-  border-bottom: 2px solid rgba(85, 107, 47, 0.30);
+  border-bottom: 2px solid rgba(92, 110, 61, 0.30);
   color: var(--text-primary);
-  border-radius: 3px;
+  border-radius: 4px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   font-family: var(--font-tajawal), 'Inter', system-ui, sans-serif;
 }
@@ -549,7 +538,7 @@ body {
   background: var(--surface);
 }
 
-/* Button primary — olive highlighter style */
+/* Button primary — forest green highlighter style */
 .btn-primary {
   background: var(--accent);
   color: #FFFFFF;
@@ -558,12 +547,12 @@ body {
   font-weight: 600;
   font-size: 0.875rem;
   transition: opacity 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
-  box-shadow: 0 2px 4px rgba(85, 107, 47, 0.30);
+  box-shadow: 0 2px 4px rgba(92, 110, 61, 0.30);
 }
 
 .btn-primary:hover {
   opacity: 0.92;
-  box-shadow: 0 3px 8px rgba(85, 107, 47, 0.35);
+  box-shadow: 0 3px 8px rgba(92, 110, 61, 0.35);
 }
 
 .btn-primary:active {
@@ -573,6 +562,6 @@ body {
 /* Header — notebook cover style */
 .notebook-header {
   background: var(--surface) !important;
-  border-bottom: 2px solid rgba(85, 107, 47, 0.25) !important;
-  box-shadow: 0 2px 8px rgba(43, 33, 29, 0.08) !important;
+  border-bottom: 2px solid rgba(92, 110, 61, 0.25) !important;
+  box-shadow: 0 2px 8px rgba(42, 42, 32, 0.10) !important;
 }

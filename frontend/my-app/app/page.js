@@ -9,9 +9,11 @@ import CycleSummary from '../components/CycleSummary';
 import SpendingChart from '../components/SpendingChart';
 import { Settings, Globe, Activity, Moon, Sun, Plus, X } from 'lucide-react';
 import { useLanguage } from '../lib/LanguageContext';
-import { getCycleHistory } from '../lib/api';
+import { getCycleHistory, isAuthenticated, logout } from '../lib/api';
+import { useRouter } from 'next/navigation';
 
 export default function Home() {
+  const router = useRouter();
   const { t, language, setLanguage, theme, toggleTheme } = useLanguage();
   const [refreshKey, setRefreshKey] = useState(0);
   const [showAddTx, setShowAddTx] = useState(false);
@@ -19,8 +21,17 @@ export default function Home() {
   const [selectedCycleId, setSelectedCycleId] = useState(null); // null = current cycle
 
   useEffect(() => {
+    if (!isAuthenticated()) {
+      router.replace('/login');
+      return;
+    }
     getCycleHistory(12).then(setCycles).catch(console.error);
   }, [refreshKey]);
+
+  function handleLogout() {
+    logout();
+    router.replace('/login');
+  }
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
@@ -69,6 +80,13 @@ export default function Home() {
               <Settings className="w-3.5 h-3.5" />
               {t('manageRules')}
             </Link>
+            <button
+              onClick={handleLogout}
+              className="btn-secondary flex items-center gap-1.5 px-2.5 py-1.5 text-xs"
+              style={{ color: 'var(--danger)' }}
+            >
+              {isRTL ? 'خروج' : 'Logout'}
+            </button>
           </div>
         </div>
       </header>
@@ -81,16 +99,16 @@ export default function Home() {
         {/* Cycle filter strip */}
         {cycles.length > 0 && (
           <div className="flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-            <span className="text-[9px] uppercase tracking-wider shrink-0" style={{ color: 'var(--text-muted)' }}>
+            <span className="text-[9px] uppercase tracking-wider shrink-0" style={{ color: 'rgba(255, 255, 255, 0.55)' }}>
               {isRTL ? 'الدورة' : 'Cycle'}
             </span>
             <button
               onClick={() => setSelectedCycleId(null)}
               className="shrink-0 px-3 py-1 rounded-full text-[10px] font-medium transition-all border"
               style={{
-                background: selectedCycleId === null ? 'var(--accent)' : 'transparent',
-                color: selectedCycleId === null ? '#fff' : 'var(--text-secondary)',
-                borderColor: selectedCycleId === null ? 'var(--accent)' : 'var(--border)',
+                background: selectedCycleId === null ? 'var(--accent)' : 'rgba(255, 255, 255, 0.08)',
+                color: selectedCycleId === null ? '#fff' : 'rgba(255, 255, 255, 0.85)',
+                borderColor: selectedCycleId === null ? 'var(--accent)' : 'rgba(255, 255, 255, 0.25)',
               }}
             >
               {isRTL ? 'الحالية' : 'Current'}
@@ -107,9 +125,9 @@ export default function Home() {
                   onClick={() => setSelectedCycleId(cycle.id)}
                   className="shrink-0 px-3 py-1 rounded-full text-[10px] font-medium transition-all border"
                   style={{
-                    background: isSelected ? 'var(--accent)' : 'transparent',
-                    color: isSelected ? '#fff' : 'var(--text-secondary)',
-                    borderColor: isSelected ? 'var(--accent)' : 'var(--border)',
+                    background: isSelected ? 'var(--accent)' : 'rgba(255, 255, 255, 0.08)',
+                    color: isSelected ? '#fff' : 'rgba(255, 255, 255, 0.85)',
+                    borderColor: isSelected ? 'var(--accent)' : 'rgba(255, 255, 255, 0.25)',
                   }}
                 >
                   {label}

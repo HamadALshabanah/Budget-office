@@ -1,8 +1,9 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Trash2, Save, ArrowRight, Pencil, X, Tag, RefreshCw, Check, Moon, Sun } from 'lucide-react';
-import { fetchRules, addRule, deleteRule, updateRule, categorizeInvoices } from '../../lib/api';
+import { fetchRules, addRule, deleteRule, updateRule, categorizeInvoices, isAuthenticated } from '../../lib/api';
 import { useLanguage } from '../../lib/LanguageContext';
 
 function KeywordsInput({ keywords, setKeywords, placeholder, hint }) {
@@ -86,6 +87,7 @@ function KeywordsInput({ keywords, setKeywords, placeholder, hint }) {
 }
 
 export default function RulesPage() {
+    const router = useRouter();
     const { t, isRTL, theme, toggleTheme } = useLanguage();
     const [rules, setRules] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -103,6 +105,10 @@ export default function RulesPage() {
     const [recategorizeResult, setRecategorizeResult] = useState(null);
 
     useEffect(() => {
+        if (!isAuthenticated()) {
+            router.replace('/login');
+            return;
+        }
         loadRules();
     }, []);
 

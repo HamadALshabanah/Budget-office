@@ -13,7 +13,11 @@ class Base(DeclarativeBase):
 engine = create_engine("sqlite+pysqlite:///invoices.db", echo=False, future=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
-
+class User(Base):
+    __tablename__ = "users"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String, nullable=False)
 class Invoice(Base):
 	__tablename__ = "invoices"
 	id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)

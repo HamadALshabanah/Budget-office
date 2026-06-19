@@ -8,4 +8,7 @@ dependencies = [
     "fastapi[standard]>=0.124.4",
     "nltk>=3.9.4",
     "sqlalchemy>=2.0.45",
+    "bcrypt>=4.0.1",
+    "PyJWT",
+    "python-dotenv>=1.0.0",
 ]
