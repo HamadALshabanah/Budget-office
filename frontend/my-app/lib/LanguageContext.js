@@ -118,6 +118,7 @@ const translations = {
 
 export function LanguageProvider({ children }) {
   const [language, setLanguage] = useState('en');
+  const [theme, setTheme] = useState('light');
 
   useEffect(() => {
     // Check localStorage or browser preference
@@ -127,6 +128,12 @@ export function LanguageProvider({ children }) {
     } else if (navigator.language.startsWith('ar')) {
         setLanguage('ar');
     }
+
+    // Theme: check localStorage, default to light
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      setTheme(savedTheme);
+    }
   }, []);
 
   useEffect(() => {
@@ -135,10 +142,16 @@ export function LanguageProvider({ children }) {
     localStorage.setItem('language', language);
   }, [language]);
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
   const t = (key) => translations[language][key] || key;
+  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, isRTL: language === 'ar' }}>
+    <LanguageContext.Provider value={{ language, setLanguage, t, isRTL: language === 'ar', theme, toggleTheme }}>
       {children}
     </LanguageContext.Provider>
   );
