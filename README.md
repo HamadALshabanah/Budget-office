@@ -62,7 +62,7 @@ npm run dev
 
 ### SMS Processing
 
-#### `POST /sms/`
+#### `POST /sms`
 Ingest and process a bank SMS message. Extracts amount, merchant, and auto-classifies based on rules.
 
 **Request:**
@@ -93,7 +93,7 @@ Ingest and process a bank SMS message. Extracts amount, merchant, and auto-class
 
 ### Invoices
 
-#### `GET /invoices/`
+#### `GET /invoices`
 Retrieve all invoices with optional pagination.
 
 | Parameter | Type | Default | Description |
@@ -104,7 +104,7 @@ Retrieve all invoices with optional pagination.
 #### `GET /invoices/{invoice_id}`
 Get a specific invoice by ID.
 
-#### `PATCH /invoice/{invoice_id}`
+#### `PATCH /invoices/{invoice_id}`
 Update an invoice's classification.
 
 **Request:**
@@ -120,7 +120,7 @@ Update an invoice's classification.
 
 ### Category Rules
 
-#### `POST /rules/`
+#### `POST /rules`
 Create a new classification rule.
 
 **Request:**
@@ -134,13 +134,13 @@ Create a new classification rule.
 }
 ```
 
-#### `GET /rules_list/`
+#### `GET /rules`
 Retrieve all classification rules.
 
 #### `GET /rules/{rule_id}`
 Get a specific rule by ID.
 
-#### `PATCH /rule/{rule_id}`
+#### `PATCH /rules/{rule_id}`
 Update an existing rule.
 
 **Request:**
@@ -161,7 +161,7 @@ Delete a rule by ID.
 
 ### Categories & Budgets
 
-#### `GET /categories/`
+#### `GET /categories`
 Get all distinct main categories from rules.
 
 **Response:**
@@ -169,7 +169,7 @@ Get all distinct main categories from rules.
 ["Food", "Health", "Transport", "Entertainment"]
 ```
 
-#### `GET /category/limit/{category}`
+#### `GET /categories/{category}/limit`
 Get the spending limit for a category.
 
 **Response:**
@@ -180,7 +180,7 @@ Get the spending limit for a category.
 }
 ```
 
-#### `GET /category/remaining_limit/{category}`
+#### `GET /categories/{category}/remaining-limit`
 Get budget status including spent amount and remaining limit.
 
 **Response:**

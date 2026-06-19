@@ -19,8 +19,8 @@ const translations = {
         ofTotal: "of total",
         noData: "No data available",
         loading: "Loading analysis...",
-        active: "Active",
-        closed: "Closed",
+        active: "ACTIVE",
+        closed: "CLOSED",
     },
     ar: {
         title: "تحليل الدورة",
@@ -76,134 +76,87 @@ export default function CycleAnalysisModal({ cycleId, onClose }) {
 
     if (!cycleId) return null;
 
+    const getBudgetColor = (pct) => {
+        if (pct <= 80) return 'var(--accent)';
+        if (pct <= 100) return 'var(--warning)';
+        return 'var(--danger)';
+    };
+
     return (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div 
-                className={`bg-gradient-to-br from-[#1a1a25] to-[#12121a] rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-cyan-500/30 shadow-[0_0_30px_rgba(0,255,255,0.2)] ${isRTL ? 'rtl' : 'ltr'}`}
+        <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4">
+            <div
+                className={`panel w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-fade-up ${isRTL ? 'rtl' : 'ltr'}`}
+                style={{ background: 'var(--surface-raised)' }}
                 dir={isRTL ? 'rtl' : 'ltr'}
             >
                 {/* Header */}
-                <div className="sticky top-0 bg-gradient-to-r from-[#1a1a25] to-[#12121a] p-4 border-b border-[#2a2a3a] flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-cyan-500/10 rounded border border-cyan-500/30">
-                            <PieChart className="w-5 h-5 text-cyan-400" />
+                <div className="sticky top-0 p-4 flex justify-between items-center" style={{ background: 'var(--surface-raised)', borderBottom: '1px solid var(--border)' }}>
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded flex items-center justify-center" style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
+                            <PieChart className="w-3.5 h-3.5" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-cyan-400">{t.title}</h3>
+                            <h3 className="font-heading text-sm" style={{ color: 'var(--text-primary)' }}>{t.title}</h3>
                             {analysis && (
-                                <p className="text-xs text-gray-500">
+                                <p className="text-[9px] font-data" style={{ color: 'var(--text-muted)' }}>
                                     {formatDate(analysis.start_date)} → {analysis.end_date ? formatDate(analysis.end_date) : t.active}
                                 </p>
                             )}
                         </div>
                     </div>
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-[#2a2a3a] rounded transition-colors"
-                    >
-                        <X className="w-5 h-5 text-gray-500 hover:text-red-400" />
+                    <button onClick={onClose} className="icon-btn">
+                        <X className="w-4 h-4" />
                     </button>
                 </div>
 
                 {loading ? (
                     <div className="p-8 text-center">
-                        <div className="animate-spin w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-                        <p className="text-gray-400">{t.loading}</p>
+                        <div className="animate-spin w-6 h-6 border-2 rounded-full mx-auto mb-3" style={{ borderColor: 'var(--border-strong)', borderTopColor: 'var(--accent)' }}></div>
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{t.loading}</p>
                     </div>
                 ) : analysis ? (
-                    <div className="p-4 space-y-4">
+                    <div className="p-4 space-y-3">
                         {/* Status Badge */}
                         <div className="flex justify-center">
-                            <span className={`px-4 py-1 rounded-full text-sm font-bold ${
-                                analysis.is_active 
-                                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
-                                    : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
-                            }`}>
+                            <span className={`badge text-[9px] uppercase tracking-wider font-semibold ${analysis.is_active ? 'badge-green' : ''}`} style={!analysis.is_active ? { background: 'var(--base-subtle)', color: 'var(--text-muted)' } : {}}>
                                 {analysis.is_active ? t.active : t.closed}
                             </span>
                         </div>
 
                         {/* Stats Grid */}
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            <div className="bg-[#12121a] rounded-lg p-4 border border-[#2a2a3a]">
-                                <div className="flex items-center gap-2 text-gray-500 text-xs uppercase tracking-wider mb-2">
-                                    <Wallet className="w-4 h-4" />
-                                    {t.totalSpent}
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {[
+                                { icon: Wallet, label: t.totalSpent, value: formatCurrency(analysis.total_spent), color: 'var(--amount)' },
+                                { icon: TrendingUp, label: t.budget, value: formatCurrency(analysis.total_budget), color: 'var(--accent)' },
+                                { icon: Wallet, label: t.remaining, value: formatCurrency(analysis.remaining_budget), color: analysis.remaining_budget >= 0 ? 'var(--accent)' : 'var(--danger)' },
+                                { icon: Receipt, label: t.transactions, value: analysis.transaction_count, color: 'var(--text-primary)' },
+                                { icon: ShoppingBag, label: t.avgTransaction, value: formatCurrency(analysis.average_transaction), color: 'var(--amount)' },
+                                { icon: PieChart, label: t.budgetUsed, value: `${analysis.budget_percentage_used}%`, color: getBudgetColor(analysis.budget_percentage_used) },
+                            ].map((stat, idx) => (
+                                <div key={idx} className="p-3 rounded" style={{ background: 'var(--base-subtle)', border: '1px solid var(--border)' }}>
+                                    <div className="flex items-center gap-1.5 mb-1.5">
+                                        <stat.icon className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
+                                        <p className="text-[9px] font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{stat.label}</p>
+                                    </div>
+                                    <p className="text-lg font-semibold font-data" style={{ color: stat.color }}>
+                                        {stat.value}
+                                    </p>
                                 </div>
-                                <p className="text-2xl font-bold text-amber-400 font-mono">
-                                    {formatCurrency(analysis.total_spent)}
-                                </p>
-                            </div>
-
-                            <div className="bg-[#12121a] rounded-lg p-4 border border-[#2a2a3a]">
-                                <div className="flex items-center gap-2 text-gray-500 text-xs uppercase tracking-wider mb-2">
-                                    <TrendingUp className="w-4 h-4" />
-                                    {t.budget}
-                                </div>
-                                <p className="text-2xl font-bold text-cyan-400 font-mono">
-                                    {formatCurrency(analysis.total_budget)}
-                                </p>
-                            </div>
-
-                            <div className="bg-[#12121a] rounded-lg p-4 border border-[#2a2a3a]">
-                                <div className="flex items-center gap-2 text-gray-500 text-xs uppercase tracking-wider mb-2">
-                                    <Wallet className="w-4 h-4" />
-                                    {t.remaining}
-                                </div>
-                                <p className={`text-2xl font-bold font-mono ${
-                                    analysis.remaining_budget >= 0 ? 'text-emerald-400' : 'text-red-400'
-                                }`}>
-                                    {formatCurrency(analysis.remaining_budget)}
-                                </p>
-                            </div>
-
-                            <div className="bg-[#12121a] rounded-lg p-4 border border-[#2a2a3a]">
-                                <div className="flex items-center gap-2 text-gray-500 text-xs uppercase tracking-wider mb-2">
-                                    <Receipt className="w-4 h-4" />
-                                    {t.transactions}
-                                </div>
-                                <p className="text-2xl font-bold text-white font-mono">
-                                    {analysis.transaction_count}
-                                </p>
-                            </div>
-
-                            <div className="bg-[#12121a] rounded-lg p-4 border border-[#2a2a3a]">
-                                <div className="flex items-center gap-2 text-gray-500 text-xs uppercase tracking-wider mb-2">
-                                    <ShoppingBag className="w-4 h-4" />
-                                    {t.avgTransaction}
-                                </div>
-                                <p className="text-2xl font-bold text-fuchsia-400 font-mono">
-                                    {formatCurrency(analysis.average_transaction)}
-                                </p>
-                            </div>
-
-                            <div className="bg-[#12121a] rounded-lg p-4 border border-[#2a2a3a]">
-                                <div className="flex items-center gap-2 text-gray-500 text-xs uppercase tracking-wider mb-2">
-                                    <PieChart className="w-4 h-4" />
-                                    {t.budgetUsed}
-                                </div>
-                                <p className={`text-2xl font-bold font-mono ${
-                                    analysis.budget_percentage_used <= 80 ? 'text-emerald-400' :
-                                    analysis.budget_percentage_used <= 100 ? 'text-amber-400' : 'text-red-400'
-                                }`}>
-                                    {analysis.budget_percentage_used}%
-                                </p>
-                            </div>
+                            ))}
                         </div>
 
                         {/* Budget Progress Bar */}
-                        <div className="bg-[#12121a] rounded-lg p-4 border border-[#2a2a3a]">
-                            <div className="h-4 bg-[#0a0a0f] rounded-full overflow-hidden">
+                        <div className="p-3 rounded" style={{ background: 'var(--base-subtle)', border: '1px solid var(--border)' }}>
+                            <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--border-strong)' }}>
                                 <div
-                                    className={`h-full transition-all duration-500 ${
-                                        analysis.budget_percentage_used <= 80 ? 'bg-gradient-to-r from-emerald-600 to-emerald-400' :
-                                        analysis.budget_percentage_used <= 100 ? 'bg-gradient-to-r from-amber-600 to-amber-400' :
-                                        'bg-gradient-to-r from-red-600 to-red-400'
-                                    }`}
-                                    style={{ width: `${Math.min(analysis.budget_percentage_used, 100)}%` }}
+                                    className="h-full rounded-full transition-all duration-500"
+                                    style={{
+                                        width: `${Math.min(analysis.budget_percentage_used, 100)}%`,
+                                        background: getBudgetColor(analysis.budget_percentage_used),
+                                    }}
                                 ></div>
                             </div>
-                            <div className="flex justify-between mt-2 text-xs text-gray-500">
+                            <div className="flex justify-between mt-1.5 text-[9px] font-data" style={{ color: 'var(--text-muted)' }}>
                                 <span>0%</span>
                                 <span>50%</span>
                                 <span>100%</span>
@@ -212,33 +165,33 @@ export default function CycleAnalysisModal({ cycleId, onClose }) {
 
                         {/* Category Breakdown */}
                         {analysis.category_breakdown?.length > 0 && (
-                            <div className="bg-[#12121a] rounded-lg p-4 border border-[#2a2a3a]">
-                                <h4 className="text-sm font-bold text-gray-300 mb-4 flex items-center gap-2">
-                                    <PieChart className="w-4 h-4 text-cyan-400" />
+                            <div className="p-3 rounded" style={{ background: 'var(--base-subtle)', border: '1px solid var(--border)' }}>
+                                <h4 className="text-[9px] font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                                    <PieChart className="w-3 h-3" style={{ color: 'var(--accent)' }} />
                                     {t.categoryBreakdown}
                                 </h4>
-                                <div className="space-y-3">
+                                <div className="space-y-2.5">
                                     {analysis.category_breakdown.map((cat, idx) => (
-                                        <div key={idx} className="group">
+                                        <div key={idx}>
                                             <div className="flex justify-between items-center mb-1">
-                                                <span className="text-gray-300 text-sm">{cat.category || 'Uncategorized'}</span>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-amber-400 font-mono text-sm">
+                                                <span className="text-xs" style={{ color: 'var(--text-primary)' }}>{cat.category || 'Uncategorized'}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-semibold font-data" style={{ color: 'var(--amount)' }}>
                                                         {formatCurrency(cat.spent)}
                                                     </span>
-                                                    <span className="text-gray-500 text-xs">
-                                                        {cat.percentage_of_total}% {t.ofTotal}
+                                                    <span className="text-[9px] font-data" style={{ color: 'var(--text-muted)' }}>
+                                                        {cat.percentage_of_total}%
                                                     </span>
                                                 </div>
                                             </div>
-                                            <div className="h-2 bg-[#0a0a0f] rounded-full overflow-hidden">
+                                            <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--border-strong)' }}>
                                                 <div
-                                                    className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all"
-                                                    style={{ width: `${cat.percentage_of_total}%` }}
+                                                    className="h-full rounded-full transition-all"
+                                                    style={{ width: `${cat.percentage_of_total}%`, background: 'var(--accent)' }}
                                                 ></div>
                                             </div>
                                             {cat.limit && (
-                                                <p className="text-xs text-gray-500 mt-1">
+                                                <p className="text-[9px] font-data mt-0.5" style={{ color: 'var(--text-muted)' }}>
                                                     {cat.percentage_of_limit}% {t.ofLimit} ({formatCurrency(cat.limit)})
                                                 </p>
                                             )}
@@ -250,24 +203,25 @@ export default function CycleAnalysisModal({ cycleId, onClose }) {
 
                         {/* Top Merchants */}
                         {analysis.top_merchants?.length > 0 && (
-                            <div className="bg-[#12121a] rounded-lg p-4 border border-[#2a2a3a]">
-                                <h4 className="text-sm font-bold text-gray-300 mb-4 flex items-center gap-2">
-                                    <Store className="w-4 h-4 text-fuchsia-400" />
+                            <div className="p-3 rounded" style={{ background: 'var(--base-subtle)', border: '1px solid var(--border)' }}>
+                                <h4 className="text-[9px] font-semibold uppercase tracking-wider mb-3 flex items-center gap-1.5" style={{ color: 'var(--text-tertiary)' }}>
+                                    <Store className="w-3 h-3" style={{ color: 'var(--amount)' }} />
                                     {t.topMerchants}
                                 </h4>
-                                <div className="space-y-2">
+                                <div className="space-y-1.5">
                                     {analysis.top_merchants.map((merchant, idx) => (
-                                        <div 
-                                            key={idx} 
-                                            className="flex justify-between items-center p-3 bg-[#0a0a0f] rounded-lg border border-[#1a1a2a]"
+                                        <div
+                                            key={idx}
+                                            className="flex justify-between items-center p-2 rounded"
+                                            style={{ background: 'var(--surface)' }}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <span className="w-6 h-6 flex items-center justify-center bg-fuchsia-500/20 text-fuchsia-400 rounded text-xs font-bold">
+                                            <div className="flex items-center gap-2">
+                                                <span className="w-5 h-5 flex items-center justify-center rounded text-[9px] font-semibold font-data" style={{ background: 'var(--amount-dim)', color: 'var(--amount)' }}>
                                                     {idx + 1}
                                                 </span>
-                                                <span className="text-gray-300 text-sm">{merchant.merchant}</span>
+                                                <span className="text-xs" style={{ color: 'var(--text-primary)' }}>{merchant.merchant}</span>
                                             </div>
-                                            <span className="text-amber-400 font-mono text-sm font-bold">
+                                            <span className="text-xs font-semibold font-data" style={{ color: 'var(--amount)' }}>
                                                 {formatCurrency(merchant.spent)}
                                             </span>
                                         </div>
@@ -277,13 +231,13 @@ export default function CycleAnalysisModal({ cycleId, onClose }) {
                         )}
 
                         {analysis.transaction_count === 0 && (
-                            <div className="text-center py-8 text-gray-500">
+                            <div className="text-center py-6 text-xs" style={{ color: 'var(--text-muted)' }}>
                                 {t.noData}
                             </div>
                         )}
                     </div>
                 ) : (
-                    <div className="p-8 text-center text-gray-500">
+                    <div className="p-8 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
                         {t.noData}
                     </div>
                 )}
