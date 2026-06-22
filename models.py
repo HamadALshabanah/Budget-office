@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, String, func, create_engine
+from sqlalchemy import DateTime, Float, ForeignKey, String, func, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 
@@ -19,19 +19,21 @@ class User(Base):
     username: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
 class Invoice(Base):
-	__tablename__ = "invoices"
-	id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-	amount: Mapped[float | None] = mapped_column(Float, nullable=True)
-	merchant: Mapped[str | None] = mapped_column(String, nullable=True)
-	raw_invoice: Mapped[str] = mapped_column(String, nullable=False)
-	created_at: Mapped[datetime] = mapped_column(
-		DateTime(timezone=True), server_default=func.now(), nullable=False
-	)
-	extraction_status: Mapped[str] = mapped_column(String, nullable=False)
+    __tablename__ = "invoices"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+    amount: Mapped[float | None] = mapped_column(Float, nullable=True)
+    merchant: Mapped[str | None] = mapped_column(String, nullable=True)
+    raw_invoice: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    extraction_status: Mapped[str] = mapped_column(String, nullable=False)
     
-	classification: Mapped[str | None] = mapped_column(String, nullable=True)
-	main_category: Mapped[str | None] = mapped_column(String, nullable=True)
-	sub_category: Mapped[str | None] = mapped_column(String, nullable=True)
+    classification: Mapped[str | None] = mapped_column(String, nullable=True)
+    main_category: Mapped[str | None] = mapped_column(String, nullable=True)
+    sub_category: Mapped[str | None] = mapped_column(String, nullable=True)    
 
 class CategoryRule(Base):
     __tablename__ = "category_rules"
@@ -42,6 +44,8 @@ class CategoryRule(Base):
     main_category: Mapped[str] = mapped_column(String, nullable=False)
     sub_category: Mapped[str] = mapped_column(String, nullable=False)
     category_limit: Mapped[float] = mapped_column(Float, nullable=True)
+    
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 
 def insert_invoice(data: dict) -> None:
     db_session = SessionLocal()
@@ -53,10 +57,11 @@ def insert_invoice(data: dict) -> None:
         classification=data.get("classification"),
 		main_category=data.get("main_category"),
 		sub_category=data.get("sub_category"),
+        user_id=data.get("user_id"),
     )
     db_session.add(invoice)
     db_session.commit()
-
+    db_session.close()
 class BudgetCycle(Base):
     __tablename__ = "budget_cycles"
     
@@ -64,11 +69,15 @@ class BudgetCycle(Base):
     start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     is_active: Mapped[bool] = mapped_column(default=True)
+    
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 class TransferLimitReq(Base):
     __tablename__ = "transfer_limits"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     from_category: Mapped[str] = mapped_column(String, nullable=False)
     to_category: Mapped[str] = mapped_column(String, nullable=False)
     amount: Mapped[float] = mapped_column(Float, nullable=False)
+    
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
 def init_db() -> None:
 	Base.metadata.create_all(bind=engine)

@@ -78,10 +78,10 @@ def register(req: RegisterRequest):
 
 
 @router.post("/login")
-def login(req: LoginRequest):
-    db = get_db_session()
+def login(req: LoginRequest, db=Depends(get_db_session)):
     try:
         user = db.query(User).filter(User.username == req.username).first()
+        print(f"req {req}")
         if not user or not bcrypt.checkpw(req.password.encode("utf-8"), user.password_hash.encode("utf-8")):
             raise HTTPException(status_code=401, detail="Invalid username or password")
         token = create_token(user.id)

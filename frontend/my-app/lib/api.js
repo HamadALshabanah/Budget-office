@@ -191,6 +191,14 @@ export async function getCycleInvoices(cycleId) {
     return res.json();
 }
 
+export async function deleteCycle(cycleId) {
+    const res = await fetch(`${API_URL}/cycles/${cycleId}`, {
+        method: 'DELETE',
+        headers: { ...getAuthHeader() },
+    });
+    return res.json();
+}
+
 export async function categorizeInvoices() {
     const res = await fetch(`${API_URL}/invoices/categorize`, {
         method: 'POST',

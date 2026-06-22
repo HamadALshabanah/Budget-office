@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { getCurrentCycle, startNewCycle, getCycleHistory, endCurrentCycle } from '../lib/api';
+import { getCurrentCycle, startNewCycle, getCycleHistory, endCurrentCycle, deleteCycle } from '../lib/api';
 import { useLanguage } from '../lib/LanguageContext';
-import { Calendar, RefreshCw, History, X, ChevronDown, ChevronUp, BarChart3, Plus } from 'lucide-react';
+import { Calendar, RefreshCw, History, X, ChevronDown, ChevronUp, BarChart3, Plus, Trash2 } from 'lucide-react';
 import CycleAnalysisModal from './CycleAnalysisModal';
 
 const translations = {
@@ -153,6 +153,14 @@ export default function BudgetCycle({ onCycleChange }) {
     const handleEndCycle = async () => {
         if (confirm(isRTL ? 'هل أنت متأكد من إنهاء الدورة الحالية؟' : 'Are you sure you want to end the current cycle?')) {
             await endCurrentCycle();
+            fetchData();
+            if (onCycleChange) onCycleChange();
+        }
+    };
+
+    const handleDeleteCycle = async (cycleId) => {
+        if (confirm(isRTL ? 'هل أنت متأكد من حذف هذه الدورة؟ لا يمكن التراجع عن هذا الإجراء.' : 'Are you sure you want to delete this cycle? This action cannot be undone.')) {
+            await deleteCycle(cycleId);
             fetchData();
             if (onCycleChange) onCycleChange();
         }
@@ -327,13 +335,22 @@ export default function BudgetCycle({ onCycleChange }) {
                                         <span className="text-[9px] block uppercase" style={{ color: 'var(--text-muted)' }}>{t.spent}</span>
                                     </div>
 
-                                    <button
-                                        onClick={() => setSelectedCycleId(h.id)}
-                                        className="btn-secondary p-1.5 rounded"
-                                        title={t.viewAnalysis}
-                                    >
-                                        <BarChart3 className="w-3.5 h-3.5" style={{ color: 'var(--text-secondary)' }} />
-                                    </button>
+                                    <div className="flex gap-1">
+                                        <button
+                                            onClick={() => setSelectedCycleId(h.id)}
+                                            className="btn-secondary p-1.5 rounded"
+                                            title={t.viewAnalysis}
+                                        >
+                                            <BarChart3 className="w-3.5 h-3.5" style={{ color: 'var(--text-secondary)' }} />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteCycle(h.id)}
+                                            className="btn-secondary p-1.5 rounded icon-btn-danger"
+                                            title={isRTL ? 'حذف الدورة' : 'Delete cycle'}
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" style={{ color: 'var(--danger)' }} />
+                                        </button>
+                                    </div>
                                 </div>
                             );
                         })}

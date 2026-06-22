@@ -1,7 +1,8 @@
 import os
 import sys
 from datetime import datetime, timedelta
-from models import init_db, SessionLocal, Invoice, CategoryRule, BudgetCycle, Base, engine
+from models import init_db, SessionLocal, Invoice, CategoryRule, BudgetCycle, Base, engine,User
+from user_session import login, register,RegisterRequest
 
 def clear_db():
     print("Clearing existing database...")
@@ -273,7 +274,10 @@ def seed_data():
             created_at=now - timedelta(days=inv["days_offset"])
         )
         db.add(invoice)
-
+    # Link it to a user
+    User1 = User(username="testuser", password_hash="hashedpassword")
+    db.add(User1)
+    register(RegisterRequest(username="testuser", password="testpassword"))
     db.commit()
     db.close()
     print("Database seeding completed successfully! ✨")

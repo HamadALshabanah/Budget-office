@@ -1,12 +1,13 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List,Dict,Optional
 from models import insert_invoice, init_db, SessionLocal, CategoryRule, Invoice, BudgetCycle, TransferLimitReq
-from sqlalchemy import func, cast, Date
+from sqlalchemy import func
 from datetime import datetime, timedelta
 from schema import InvoiceReq, InvoiceData, CategoryRuleReq, UpdateInvoiceReq
 from user_session import router as auth_router
+from user_session import get_current_user, get_db_session, User
 app = FastAPI()
 
 app.add_middleware(
@@ -39,6 +40,7 @@ def extract_amount(sms: str):
             if ":" in line:
                 key,value  = line.split(":",1)
                 invo_data[key.strip()] = value.strip()
+                print(invo_data)
     
     try:
         if "مبلغ" in invo_data and "لدى" in invo_data:
@@ -79,14 +81,15 @@ def classify_sms(merchant: str):
         db.close()    
 
 @app.post("/rules")
-def add_category(rule:CategoryRuleReq):
+def add_category(rule:CategoryRuleReq,current_user = Depends(get_current_user)):
     db = SessionLocal()
     category_rule = CategoryRule(
         merchant_keywords=rule.merchant_keywords,
         classification=rule.classification,
         main_category=rule.main_category,
         sub_category=rule.sub_category,
-        category_limit=rule.category_limit
+        category_limit=rule.category_limit,
+        user_id=current_user.id
     )
     db.add(category_rule)
     db.commit()
@@ -94,10 +97,11 @@ def add_category(rule:CategoryRuleReq):
     return {"status":f"Category {rule.classification} added successfully"}
 
 @app.post("/sms")
-async def receive_sms(req: InvoiceReq):
+async def receive_sms(req: InvoiceReq,current_user = Depends(get_current_user)):
     print(f"Received SMS data: {req}")
     init_db()
     invoice_data_schema = extract_amount(req.message)
+    invoice_data_schema.user_id = current_user.id
     
     insert_invoice(invoice_data_schema.model_dump())
     
@@ -108,9 +112,11 @@ async def receive_sms(req: InvoiceReq):
     }
 
 @app.get("/invoices")
-def get_invoices(skip: int = 0, limit: int = 100, search: Optional[str] = None, category: Optional[str] = None, min_amount: Optional[float] = None, max_amount: Optional[float] = None):
+def get_invoices(skip: int = 0, limit: int = 100, search: Optional[str] = None, 
+                 category: Optional[str] = None, min_amount: Optional[float] = None, 
+                 max_amount: Optional[float] = None, current_user = Depends(get_current_user)):
     db = SessionLocal()
-    query = db.query(Invoice)
+    query = db.query(Invoice).filter(Invoice.user_id == current_user.id)
 
     if search:
         query = query.filter(Invoice.merchant.ilike(f"%{search}%"))
@@ -126,24 +132,24 @@ def get_invoices(skip: int = 0, limit: int = 100, search: Optional[str] = None, 
     return invoices
 
 @app.get("/rules")
-def get_rules_list():
+def get_rules_list(current_user = Depends(get_current_user)):
     db = SessionLocal()
-    rules = db.query(CategoryRule).all()
+    rules = db.query(CategoryRule).filter(CategoryRule.user_id == current_user.id).all()
     db.close()
     return rules
 
 @app.get("/categories")
-def get_categories():
+def get_categories(current_user = Depends(get_current_user)):
     db = SessionLocal()
-    rules = db.query(CategoryRule.main_category).distinct().all()
+    rules = db.query(CategoryRule.main_category).filter(CategoryRule.user_id == current_user.id).distinct().all()
     categories = [r[0] for r in rules if r[0]]
     db.close()
     return categories
     
 @app.get("/rules/{rule_id}")    
-def get_rule(rule_id: int):
+def get_rule(rule_id: int, current_user = Depends(get_current_user)):
     db = SessionLocal()
-    rule = db.get(CategoryRule, rule_id)
+    rule = db.query(CategoryRule).filter(CategoryRule.id == rule_id, CategoryRule.user_id == current_user.id).first()
     db.close()
     if not rule:
         return {"status": "Rule not found"}
@@ -157,9 +163,9 @@ def get_rule(rule_id: int):
     }
 
 @app.get("/invoices/{invoice_id}")
-def get_invoice(invoice_id:int):
+def get_invoice(invoice_id:int, current_user = Depends(get_current_user)):
     db = SessionLocal()
-    invoice = db.get(Invoice, invoice_id)
+    invoice = db.query(Invoice).filter(Invoice.id == invoice_id, Invoice.user_id == current_user.id).first()
     db.close()
     if not invoice:
         return {"status": "Invoice not found"}
@@ -175,10 +181,10 @@ def get_invoice(invoice_id:int):
     }
 
 @app.patch("/invoices/{invoice_id}")
-def update_invoice(invoice_id:int, req: UpdateInvoiceReq):
+def update_invoice(invoice_id:int, req: UpdateInvoiceReq,current_user = Depends(get_current_user)):
     print(f"Updating invoice {invoice_id} with data: {req}")
     db = SessionLocal()
-    invoice = db.get(Invoice, invoice_id)
+    invoice = db.query(Invoice).filter(Invoice.id == invoice_id, Invoice.user_id == current_user.id).first()
     if not invoice:
         return {"status": "Invoice not found"}
     
@@ -190,9 +196,9 @@ def update_invoice(invoice_id:int, req: UpdateInvoiceReq):
     return {"status": f"Invoice {invoice_id} updated successfully"}
 
 @app.patch("/rules/{rule_id}")
-def update_rule(rule_id:int, req: CategoryRuleReq):
+def update_rule(rule_id:int, req: CategoryRuleReq, current_user = Depends(get_current_user)):
     db = SessionLocal()
-    rule = db.get(CategoryRule, rule_id)
+    rule = db.query(CategoryRule).filter(CategoryRule.id == rule_id, CategoryRule.user_id == current_user.id).first()
     if not rule:
         return {"status": "Rule not found"}
     
@@ -206,9 +212,9 @@ def update_rule(rule_id:int, req: CategoryRuleReq):
     return {"status": f"Rule {rule_id} updated successfully"}
 
 @app.delete("/invoices/{invoice_id}")
-def delete_invoice(invoice_id: int):
+def delete_invoice(invoice_id: int, current_user = Depends(get_current_user)):
     db = SessionLocal()
-    invoice = db.get(Invoice, invoice_id)
+    invoice = db.query(Invoice).filter(Invoice.id == invoice_id, Invoice.user_id == current_user.id).first()
     if not invoice:
         return {"status": "Invoice not found"}
     db.delete(invoice)
@@ -217,9 +223,9 @@ def delete_invoice(invoice_id: int):
     return {"status": f"Invoice {invoice_id} deleted successfully"}
 
 @app.delete("/rules/{rule_id}")
-def delete_rule(rule_id: int):
+def delete_rule(rule_id: int, current_user = Depends(get_current_user)):
     db= SessionLocal()
-    rule = db.get(CategoryRule, rule_id)
+    rule = db.query(CategoryRule).filter(CategoryRule.id == rule_id, CategoryRule.user_id == current_user.id).first()
     if not rule:
         return {"status": "Rule not found"}
     db.delete(rule)
@@ -228,9 +234,9 @@ def delete_rule(rule_id: int):
     return {"status": f"Rule {rule_id} deleted successfully"}
 
 @app.get("/categories/{category}/limit")
-def get_category_limit(category: str):
+def get_category_limit(category: str,current_user = Depends(get_current_user)):
     db = SessionLocal()
-    rule = db.query(CategoryRule).filter(CategoryRule.main_category == category).first()
+    rule = db.query(CategoryRule).filter(CategoryRule.main_category == category, CategoryRule.user_id == current_user.id).first()
     db.close()
     if not rule or rule.category_limit is None:
         return {"status": "No limit set for this category"}
@@ -240,7 +246,7 @@ def get_category_limit(category: str):
     }
 
 @app.post("/cycles/start")
-def start_new_cycle(start_date: Optional[str] = None,end_date: Optional[str] = None):
+def start_new_cycle(start_date: Optional[str] = None,end_date: Optional[str] = None,current_user = Depends(get_current_user)):
     """Start a new budget cycle (resets spending tracking)
     
     Args:
@@ -248,16 +254,28 @@ def start_new_cycle(start_date: Optional[str] = None,end_date: Optional[str] = N
         end_date: Optional custom end date in format YYYY-MM-DD. Defaults to None.
     """
     db = SessionLocal()
-        # End any active cycles
+    print(f"Starting new cycle with start_date={start_date} and end_date={end_date}")
+    
+    # Duplication check
+    cycle = db.query(BudgetCycle).filter(BudgetCycle.is_active == True).first()
+    start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+    if cycle is None:
+        print("No active cycle found, proceeding to create new cycle.")
+    else:
+        print(f"Active cycle found: {cycle}. Checking for duplication...")
+        if cycle.start_date.date() == start_date:
+            db.close()
+            return {"status": "error", "message": "A cycle with the same start date already exists"}
+        print("No duplication detected, proceeding to end current cycle and create new one.")
+    # End any active cycles
     active_cycles = db.query(BudgetCycle).filter(BudgetCycle.is_active == True).all()
     for cycle in active_cycles:
             cycle.is_active = False
             cycle.end_date = datetime.now()
         
-    cycle_start = datetime.strptime(start_date, "%Y-%m-%d") if start_date else datetime.now()
     cycle_end = datetime.strptime(end_date, "%Y-%m-%d") if end_date else None
     # Create new cycle
-    new_cycle = BudgetCycle(start_date=cycle_start, end_date=cycle_end, is_active=True)
+    new_cycle = BudgetCycle(start_date=start_date, end_date=cycle_end, is_active=True, user_id=current_user.id)
     db.add(new_cycle)
     db.commit()
     db.refresh(new_cycle)
@@ -271,6 +289,16 @@ def start_new_cycle(start_date: Optional[str] = None,end_date: Optional[str] = N
             "cycle_id": cycle_id,
             "start_date": start_date_iso,
         }
+
+@app.delete("/cycles/{cycle_id}")
+def delete_cycle(cycle_id: int):
+    """Delete a budget cycle and all its associated data (use with caution)"""
+    db = SessionLocal()
+    cycle = db.get(BudgetCycle, cycle_id)
+    db.delete(cycle)
+    db.commit()
+    db.close()
+    return {"status": f"Cycle {cycle_id} deleted successfully"}
 
 @app.post("/cycles/end")
 def end_current_cycle():
@@ -294,9 +322,9 @@ def end_current_cycle():
     
 # Endpoint gets the remaining limit for a given main category
 @app.get("/categories/{category}/remaining-limit")
-def get_remaining_limit(category: str):
+def get_remaining_limit(category: str, current_user = Depends(get_current_user)):
     db = SessionLocal()
-    rule = db.query(CategoryRule).filter(CategoryRule.main_category == category).first()
+    rule = db.query(CategoryRule).filter(CategoryRule.main_category == category, CategoryRule.user_id == current_user.id).first()
     if not rule or rule.category_limit is None:
         db.close()
         return {"status": "No limit set for this category"}
@@ -317,10 +345,10 @@ def get_remaining_limit(category: str):
     
 
 @app.post("/invoices/categorize")
-def categorize_invoices():
+def categorize_invoices(current_user = Depends(get_current_user)):
     """Re-categorize all invoices based on current rules"""
     db = SessionLocal()
-    invoices = db.query(Invoice).all()
+    invoices = db.query(Invoice).filter(Invoice.user_id == current_user.id).all()
     updated_count = 0
     for invoice in invoices:
         classification, main_cat, sub_cat = classify_sms(invoice.merchant)
