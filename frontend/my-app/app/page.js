@@ -3,10 +3,10 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import SMSInput from '../components/SMSInput';
 import InvoiceList from '../components/InvoiceList';
-import BudgetOverview from '../components/BudgetOverview';
 import BudgetCycle from '../components/BudgetCycle';
 import CycleSummary from '../components/CycleSummary';
-import SpendingChart from '../components/SpendingChart';
+import CategoriesPanel from '../components/CategoriesPanel';
+import BudgetOverview from '../components/BudgetOverview';
 import { Settings, Globe, Activity, Moon, Sun, Plus, X } from 'lucide-react';
 import { useLanguage } from '../lib/LanguageContext';
 import { getCycleHistory, isAuthenticated, logout } from '../lib/api';
@@ -91,24 +91,44 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-6 sm:px-8 py-6 space-y-5">
+      <main className="max-w-6xl mx-auto px-6 sm:px-8 py-6 space-y-8">
 
-        {/* Hero stat strip */}
-        <CycleSummary refreshTrigger={refreshKey} selectedCycleId={selectedCycleId} />
+        {/* Section 1 — Summary + Period controls */}
+        <section aria-label={isRTL ? 'ملخص الفترة' : 'Period summary'}>
+          <div className="flex items-end justify-between mb-3 px-0.5">
+            <div>
+              <h2 className="font-heading text-base" style={{ color: 'var(--text-primary)' }}>
+                {isRTL ? 'نظرة عامة' : 'Overview'}
+              </h2>
+              <p className="text-[10px] mt-0.5 font-data uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                {isRTL ? 'ملخص الدورة المحددة' : 'Selected cycle at a glance'}
+              </p>
+            </div>
+          </div>
+          {/* Grouped: cycle info + overview stats in one panel */}
+          <div className="panel p-5 space-y-5">
+            {/* Row 1: progress bar + 3 stat cards */}
+            <CycleSummary refreshTrigger={refreshKey} selectedCycleId={selectedCycleId} />
 
-        {/* Cycle filter strip */}
-        {cycles.length > 0 && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-            <span className="text-[9px] uppercase tracking-wider shrink-0" style={{ color: 'rgba(255, 255, 255, 0.55)' }}>
-              {isRTL ? 'الدورة' : 'Cycle'}
-            </span>
+            {/* Row 2: cycle strip + cycle info side by side, separated by divider */}
+            <div
+              className="grid gap-5 items-start xl:grid-cols-[1fr_auto]"
+              style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}
+            >
+              <div className="space-y-3 min-w-0">
+                {/* Cycle filter strip */}
+                {cycles.length > 0 && (
+                  <div className="flex items-center gap-2 overflow-x-auto py-1" style={{ scrollbarWidth: 'none' }}>
+                    <span className="text-[9px] uppercase tracking-wider shrink-0" style={{ color: 'var(--text-muted)' }}>
+                      {isRTL ? 'الدورة' : 'Cycle'}
+                    </span>
             <button
               onClick={() => setSelectedCycleId(null)}
               className="shrink-0 px-3 py-1 rounded-full text-[10px] font-medium transition-all border"
               style={{
-                background: selectedCycleId === null ? 'var(--accent)' : 'rgba(255, 255, 255, 0.08)',
-                color: selectedCycleId === null ? '#fff' : 'rgba(255, 255, 255, 0.85)',
-                borderColor: selectedCycleId === null ? 'var(--accent)' : 'rgba(255, 255, 255, 0.25)',
+                background: selectedCycleId === null ? 'var(--accent)' : 'var(--surface-inset)',
+                color: selectedCycleId === null ? '#fff' : 'var(--text-primary)',
+                borderColor: selectedCycleId === null ? 'var(--accent)' : 'var(--border)',
               }}
             >
               {isRTL ? 'الحالية' : 'Current'}
@@ -125,36 +145,48 @@ export default function Home() {
                   onClick={() => setSelectedCycleId(cycle.id)}
                   className="shrink-0 px-3 py-1 rounded-full text-[10px] font-medium transition-all border"
                   style={{
-                    background: isSelected ? 'var(--accent)' : 'rgba(255, 255, 255, 0.08)',
-                    color: isSelected ? '#fff' : 'rgba(255, 255, 255, 0.85)',
-                    borderColor: isSelected ? 'var(--accent)' : 'rgba(255, 255, 255, 0.25)',
+                    background: isSelected ? 'var(--accent)' : 'var(--surface-inset)',
+                    color: isSelected ? '#fff' : 'var(--text-primary)',
+                    borderColor: isSelected ? 'var(--accent)' : 'var(--border)',
                   }}
                 >
                   {label}
                 </button>
               );
             })}
+                </div>
+              )}
+              </div>
+            <BudgetCycle onCycleChange={handleRefresh} />
+            </div>
           </div>
-        )}
+        </section>
 
-        {/* Chart + Cycle row */}
-        <div className="grid xl:grid-cols-3 gap-5">
-          <div className="xl:col-span-2">
-            <SpendingChart refreshTrigger={refreshKey} selectedCycleId={selectedCycleId} />
+        {/* Section 2 — Spending insights */}
+        <section aria-label={isRTL ? 'تحليلات الإنفاق' : 'Spending insights'}>
+          <div className="flex items-end justify-between mb-3 px-0.5">
+            <div>
+              <h2 className="font-heading text-base" style={{ color: 'var(--text-primary)' }}>
+                {isRTL ? 'تحليلات الإنفاق' : 'Spending Insights'}
+              </h2>
+              <p className="text-[10px] mt-0.5 font-data uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+                {isRTL ? 'أعلى الفئات وميزانياتها' : 'Top categories and budgets'}
+              </p>
+            </div>
           </div>
-          <BudgetCycle onCycleChange={handleRefresh} />
-        </div>
+          <div className="space-y-5">
+            <CategoriesPanel refreshTrigger={refreshKey} selectedCycleId={selectedCycleId} />
+            <BudgetOverview refreshTrigger={refreshKey} selectedCycleId={selectedCycleId} />
+          </div>
+        </section>
 
-        {/* Category budgets */}
-        <BudgetOverview refreshTrigger={refreshKey} selectedCycleId={selectedCycleId} />
-
-        {/* Transaction ledger */}
-        <div>
+        {/* Section 3 — Transaction ledger */}
+        <section aria-label={isRTL ? 'المدفوعات' : 'Transactions'}>
           {/* Section header */}
           <div className="flex items-end justify-between mb-3 px-0.5">
             <div>
               <h2 className="font-heading text-base" style={{ color: 'var(--text-primary)' }}>
-                {isRTL ? 'المعاملات' : 'Transactions'}
+                {isRTL ? 'المدفوعات' : 'Transactions'}
               </h2>
               <p className="text-[10px] mt-0.5 font-data uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
                 {isRTL ? 'كشف الدورة الحالية' : 'Current period statement'}
@@ -167,7 +199,7 @@ export default function Home() {
               {showAddTx ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
               {showAddTx
                 ? (isRTL ? 'إلغاء' : 'Cancel')
-                : (isRTL ? 'إضافة معاملة' : 'New Transaction')}
+                : (isRTL ? 'إضافة مدفوعات' : 'New Transaction')}
             </button>
           </div>
 
@@ -179,7 +211,7 @@ export default function Home() {
           )}
 
           <InvoiceList refreshTrigger={refreshKey} onUpdate={handleRefresh} selectedCycleId={selectedCycleId} />
-        </div>
+        </section>
 
       </main>
 

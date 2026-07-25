@@ -176,7 +176,7 @@ export default function BudgetCycle({ onCycleChange }) {
     };
 
     const formatCurrency = (amount) => {
-        return new Intl.NumberFormat(isRTL ? 'ar-SA' : 'en-SA', {
+        return new Intl.NumberFormat('en-SA', {
             style: 'currency',
             currency: 'SAR',
             maximumFractionDigits: 0,
@@ -187,7 +187,7 @@ export default function BudgetCycle({ onCycleChange }) {
 
     if (loading) {
         return (
-            <div className="panel p-4 animate-pulse">
+            <div className="p-4 animate-pulse">
                 <div className="h-10 rounded" style={{ background: 'var(--base-subtle)' }}></div>
             </div>
         );
@@ -195,7 +195,7 @@ export default function BudgetCycle({ onCycleChange }) {
 
     return (
         <div className={`${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-            <div className="panel p-4">
+            <div>
                 <div className="flex flex-wrap justify-between items-center gap-4">
                     {cycle ? (
                         <div className="flex items-center gap-5">
@@ -262,16 +262,6 @@ export default function BudgetCycle({ onCycleChange }) {
                                 <span className="hidden sm:inline">{t.history}</span>
                             </button>
                         )}
-                        {cycle && (
-                            <button
-                                onClick={handleEndCycle}
-                                className="btn-secondary flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs"
-                                style={{ color: 'var(--danger)', borderColor: 'var(--danger-dim)' }}
-                            >
-                                <X className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline">{t.endCycle}</span>
-                            </button>
-                        )}
                         <button
                             onClick={() => setShowModal(true)}
                             className="btn-primary flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs"
@@ -281,6 +271,20 @@ export default function BudgetCycle({ onCycleChange }) {
                         </button>
                     </div>
                 </div>
+
+                {/* Destructive actions — separated from status */}
+                {cycle && (
+                    <div className="mt-3 pt-3 flex justify-end" style={{ borderTop: '1px solid var(--border)' }}>
+                        <button
+                            onClick={handleEndCycle}
+                            className="flex items-center gap-1.5 px-2.5 py-1 text-[10px] rounded-md transition-colors"
+                            style={{ color: 'var(--danger)' }}
+                        >
+                            <X className="w-3 h-3" />
+                            {t.endCycle}
+                        </button>
+                    </div>
+                )}
 
                 {/* History */}
                 {showHistory && history.length > 0 && (

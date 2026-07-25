@@ -1,8 +1,7 @@
 import os
 import sys
 from datetime import datetime, timedelta
-from models import init_db, SessionLocal, Invoice, CategoryRule, BudgetCycle, Base, engine,User
-from user_session import login, register,RegisterRequest
+from models import init_db, SessionLocal, Invoice, CategoryRule, BudgetCycle, Base, engine, User
 
 def clear_db():
     print("Clearing existing database...")
@@ -12,7 +11,16 @@ def clear_db():
 
 def seed_data():
     db = SessionLocal()
-    
+
+    # 0. Create the seed user first so we can attach user_id to all rows
+    import bcrypt
+    hashed = bcrypt.hashpw("testpassword".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    user = User(username="testuser", password_hash=hashed)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    uid = user.id
+
     # 1. Add Category Rules
     rules = [
         CategoryRule(
@@ -20,42 +28,48 @@ def seed_data():
             classification="Expense",
             main_category="Food & Drink",
             sub_category="Coffee",
-            category_limit=400.0
+            category_limit=400.0,
+            user_id=uid
         ),
         CategoryRule(
             merchant_keywords="Al Nahdi, Pharmacy, Dawaa",
             classification="Expense",
             main_category="Health",
             sub_category="Pharmacy",
-            category_limit=600.0
+            category_limit=600.0,
+            user_id=uid
         ),
         CategoryRule(
             merchant_keywords="Uber, Careem, Bolt",
             classification="Expense",
             main_category="Transport",
             sub_category="Ride-hailing",
-            category_limit=500.0
+            category_limit=500.0,
+            user_id=uid
         ),
         CategoryRule(
             merchant_keywords="Panda, Carrefour, Lulu, Grocery",
             classification="Expense",
             main_category="Groceries",
             sub_category="Supermarket",
-            category_limit=1800.0
+            category_limit=1800.0,
+            user_id=uid
         ),
         CategoryRule(
             merchant_keywords="Netflix, Spotify, Apple",
             classification="Expense",
             main_category="Entertainment",
             sub_category="Subscriptions",
-            category_limit=200.0
+            category_limit=200.0,
+            user_id=uid
         ),
         CategoryRule(
             merchant_keywords="Zara, H&M, Namshi",
             classification="Expense",
             main_category="Shopping",
             sub_category="Apparel",
-            category_limit=800.0
+            category_limit=800.0,
+            user_id=uid
         )
     ]
     
@@ -76,12 +90,14 @@ def seed_data():
     past_cycle = BudgetCycle(
         start_date=past_start,
         end_date=past_end,
-        is_active=False
+        is_active=False,
+        user_id=uid
     )
-    
+
     current_cycle = BudgetCycle(
         start_date=current_start,
-        is_active=True
+        is_active=True,
+        user_id=uid
     )
     
     print("Adding budget cycles...")
@@ -257,7 +273,8 @@ def seed_data():
             classification=inv["classification"],
             main_category=inv["main"],
             sub_category=inv["sub"],
-            created_at=now - timedelta(days=inv["days_offset"])
+            created_at=now - timedelta(days=inv["days_offset"]),
+            user_id=uid
         )
         db.add(invoice)
 
@@ -271,16 +288,13 @@ def seed_data():
             classification=inv["classification"],
             main_category=inv["main"],
             sub_category=inv["sub"],
-            created_at=now - timedelta(days=inv["days_offset"])
+            created_at=now - timedelta(days=inv["days_offset"]),
+            user_id=uid
         )
         db.add(invoice)
-    # Link it to a user
-    User1 = User(username="testuser", password_hash="hashedpassword")
-    db.add(User1)
-    register(RegisterRequest(username="testuser", password="testpassword"))
+
     db.commit()
     db.close()
-    print("Database seeding completed successfully! ✨")
 
 if __name__ == "__main__":
     clear_db()

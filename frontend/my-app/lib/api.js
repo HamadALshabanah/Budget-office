@@ -1,4 +1,4 @@
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
@@ -179,6 +179,13 @@ export async function getCycleAnalysis(cycleId) {
 
 export async function getSpendingTimeline(cycleId) {
     const res = await fetch(`${API_URL}/cycles/${cycleId}/spending-timeline`, {
+        headers: { ...getAuthHeader() },
+    });
+    return res.json();
+}
+
+export async function getTopCategories(cycleId) {
+    const res = await fetch(`${API_URL}/cycles/${cycleId}/top-categories`, {
         headers: { ...getAuthHeader() },
     });
     return res.json();

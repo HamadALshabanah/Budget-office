@@ -31,7 +31,11 @@ class RegisterRequest(BaseModel):
 
 
 def get_db_session():
-    return SessionLocal()
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 def create_token(user_id: int) -> str:
@@ -58,22 +62,23 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db=Depends(g
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    # Eagerly load scalar attributes while the session is open so
+    # `current_user.id` works even if the object later becomes detached.
+    user_id_value = user.id
+    db.expunge(user)
+    user.id = user_id_value
     return user
 
 
 @router.post("/register", status_code=201)
-def register(req: RegisterRequest):
-    db = get_db_session()
-    try:
-        existing = db.query(User).filter(User.username == req.username).first()
-        if existing:
-            raise HTTPException(status_code=409, detail="Username already exists")
-        hashed = bcrypt.hashpw(req.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-        new_user = User(username=req.username, password_hash=hashed)
-        db.add(new_user)
-        db.commit()
-    finally:
-        db.close()
+def register(req: RegisterRequest, db=Depends(get_db_session)):
+    existing = db.query(User).filter(User.username == req.username).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Username already exists")
+    hashed = bcrypt.hashpw(req.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    new_user = User(username=req.username, password_hash=hashed)
+    db.add(new_user)
+    db.commit()
     return {"status": "registered"}
 
 

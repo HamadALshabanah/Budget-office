@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List,Dict,Optional
@@ -255,9 +255,12 @@ def start_new_cycle(start_date: Optional[str] = None,end_date: Optional[str] = N
     """
     db = SessionLocal()
     print(f"Starting new cycle with start_date={start_date} and end_date={end_date}")
-    
+    if start_date is None:
+        start_date = datetime.now().strftime("%Y-%m-%d")
     # Duplication check
-    cycle = db.query(BudgetCycle).filter(BudgetCycle.is_active == True).first()
+    cycle = db.query(BudgetCycle).filter(
+        BudgetCycle.is_active == True, BudgetCycle.user_id == current_user.id
+    ).first()
     start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
     if cycle is None:
         print("No active cycle found, proceeding to create new cycle.")
@@ -268,7 +271,9 @@ def start_new_cycle(start_date: Optional[str] = None,end_date: Optional[str] = N
             return {"status": "error", "message": "A cycle with the same start date already exists"}
         print("No duplication detected, proceeding to end current cycle and create new one.")
     # End any active cycles
-    active_cycles = db.query(BudgetCycle).filter(BudgetCycle.is_active == True).all()
+    active_cycles = db.query(BudgetCycle).filter(
+        BudgetCycle.is_active == True, BudgetCycle.user_id == current_user.id
+    ).all()
     for cycle in active_cycles:
             cycle.is_active = False
             cycle.end_date = datetime.now()
@@ -291,20 +296,27 @@ def start_new_cycle(start_date: Optional[str] = None,end_date: Optional[str] = N
         }
 
 @app.delete("/cycles/{cycle_id}")
-def delete_cycle(cycle_id: int):
+def delete_cycle(cycle_id: int, current_user = Depends(get_current_user)):
     """Delete a budget cycle and all its associated data (use with caution)"""
     db = SessionLocal()
-    cycle = db.get(BudgetCycle, cycle_id)
+    cycle = db.query(BudgetCycle).filter(
+        BudgetCycle.id == cycle_id, BudgetCycle.user_id == current_user.id
+    ).first()
+    if not cycle:
+        db.close()
+        return {"status": "Cycle not found"}
     db.delete(cycle)
     db.commit()
     db.close()
     return {"status": f"Cycle {cycle_id} deleted successfully"}
 
 @app.post("/cycles/end")
-def end_current_cycle():
+def end_current_cycle(current_user = Depends(get_current_user)):
     """Force end the current active budget cycle"""
     db = SessionLocal()
-    active_cycles = db.query(BudgetCycle).filter(BudgetCycle.is_active == True).all()
+    active_cycles = db.query(BudgetCycle).filter(
+        BudgetCycle.is_active == True, BudgetCycle.user_id == current_user.id
+    ).all()
     
     if not active_cycles:
         db.close()
@@ -331,7 +343,8 @@ def get_remaining_limit(category: str, current_user = Depends(get_current_user))
     
     total_spent = db.query(func.sum(Invoice.amount)).filter(
         Invoice.main_category == category,
-        Invoice.extraction_status == "success"
+        Invoice.extraction_status == "success",
+        Invoice.user_id == current_user.id
     ).scalar() or 0
     
     remaining_limit = rule.category_limit - total_spent
@@ -364,10 +377,12 @@ def categorize_invoices(current_user = Depends(get_current_user)):
     return {"status": "success", "updated_invoices": updated_count}
 
 @app.get("/cycles/{cycle_id}/invoices")
-def get_cycle_invoices(cycle_id: int):
+def get_cycle_invoices(cycle_id: int, current_user = Depends(get_current_user)):
     """Get all successful invoices for a specific cycle"""
     db = SessionLocal()
-    cycle = db.get(BudgetCycle, cycle_id)
+    cycle = db.query(BudgetCycle).filter(
+        BudgetCycle.id == cycle_id, BudgetCycle.user_id == current_user.id
+    ).first()
     if not cycle:
         db.close()
         return {"status": "Cycle not found"}
@@ -376,7 +391,8 @@ def get_cycle_invoices(cycle_id: int):
     invoices = db.query(Invoice).filter(
         Invoice.created_at >= start_date,
         Invoice.created_at <= end_date,
-        Invoice.extraction_status == "success"
+        Invoice.extraction_status == "success",
+        Invoice.user_id == current_user.id
     ).order_by(Invoice.created_at.desc()).all()
     db.close()
     return [
@@ -393,12 +409,14 @@ def get_cycle_invoices(cycle_id: int):
         for inv in invoices
     ]
 @app.get("/cycles/history")
-def get_cycle_history(limit: int = 12):
+def get_cycle_history(limit: int = 12, current_user = Depends(get_current_user)):
     """Get past budget cycles"""
     db = SessionLocal()
     try:
-        cycles = db.query(BudgetCycle).order_by(BudgetCycle.start_date.desc()).limit(limit).all()
-        
+        cycles = db.query(BudgetCycle).filter(
+            BudgetCycle.user_id == current_user.id
+        ).order_by(BudgetCycle.start_date.desc()).limit(limit).all()
+
         result = []
         for cycle in cycles:
             # Get total spent in this cycle
@@ -406,7 +424,8 @@ def get_cycle_history(limit: int = 12):
             total_spent = db.query(func.sum(Invoice.amount)).filter(
                 Invoice.created_at >= cycle.start_date,
                 Invoice.created_at <= end,
-                Invoice.extraction_status == "success"
+                Invoice.extraction_status == "success",
+                Invoice.user_id == current_user.id
             ).scalar() or 0
             
             result.append({
@@ -422,11 +441,13 @@ def get_cycle_history(limit: int = 12):
         db.close()
         
 @app.get("/cycles/current")
-def get_current_cycle():
+def get_current_cycle(current_user = Depends(get_current_user)):
     """Get the current active budget cycle"""
     db = SessionLocal()
     try:
-        cycle = db.query(BudgetCycle).filter(BudgetCycle.is_active == True).first()
+        cycle = db.query(BudgetCycle).filter(
+            BudgetCycle.is_active == True, BudgetCycle.user_id == current_user.id
+        ).first()
         
         if not cycle:
             return {"status": "no_active_cycle"}
@@ -452,16 +473,18 @@ def get_current_cycle():
         db.close()
 
 @app.get("/categories/{category}/analysis")
-def category_analysis(category: str):
+def category_analysis(category: str, current_user = Depends(get_current_user)):
     db = SessionLocal()
     total_spent = db.query(func.sum(Invoice.amount)).filter(
         Invoice.main_category == category,
-        Invoice.extraction_status == "success"
+        Invoice.extraction_status == "success",
+        Invoice.user_id == current_user.id
     ).scalar() or 0
-    
+
     invoice_count = db.query(func.count(Invoice.id)).filter(
         Invoice.main_category == category,
-        Invoice.extraction_status == "success"
+        Invoice.extraction_status == "success",
+        Invoice.user_id == current_user.id
     ).scalar() or 0
     
     average_spent = total_spent / invoice_count if invoice_count > 0 else 0
@@ -475,47 +498,92 @@ def category_analysis(category: str):
     }
     
 @app.get("/cycles/{cycle_id}/analysis")
-def cycle_analysis(cycle_id: int):
+def cycle_analysis(cycle_id: int,current_user = Depends(get_current_user)):
     db = SessionLocal()
     
-    cycle = db.get(BudgetCycle, cycle_id)
-    
+    cycle = db.query(BudgetCycle).filter(BudgetCycle.id == cycle_id, BudgetCycle.user_id == current_user.id).first()
+    if not cycle:
+        db.close()
+        return {"status": "Cycle not found"}
+
     end = cycle.end_date or datetime.now()
     invoices = db.query(Invoice).filter(
         Invoice.created_at >= cycle.start_date,
         Invoice.created_at <= end,
-        Invoice.extraction_status == "success"
+        Invoice.extraction_status == "success",
+        Invoice.user_id == current_user.id
     ).all()
-    
-    
-    total_spent = sum(inv.amount for inv in invoices)
+
+    # Cycle time elapsed — pace baseline (0..1)
+    start_naive = cycle.start_date.replace(tzinfo=None)
+    end_naive = end.replace(tzinfo=None)
+    now_naive = datetime.now()
+    elapsed_days = max((min(now_naive, end_naive) - start_naive).days, 0)
+    planned_days = (end_naive - start_naive).days
+    cycle_days = planned_days if planned_days > 0 else 30
+    cycle_days = max(cycle_days, 1)
+    time_elapsed_pct = round(min(elapsed_days / cycle_days, 1.0) * 100, 1)
+    # TODO Revisit the logic 
+    def pace_of(spent, limit):
+        """Compare budget consumed % vs time elapsed % on_track / ahead / behind."""
+        if not limit:
+            return None
+        consumed = (spent / limit) * 100
+        diff = consumed - time_elapsed_pct
+        if diff > 10:
+            return "ahead"      # spending faster than time -> risk
+        if diff < -10:
+            return "behind"     # comfortably under pace
+        return "on_track"
+
+    total_spent = sum((inv.amount or 0) for inv in invoices)
     transaction_count = len(invoices)
     average_transaction = total_spent / transaction_count if transaction_count > 0 else 0
-    
-    total_budget  = db.query(func.sum(CategoryRule.category_limit)).scalar() or 0
-    
+
+    total_budget  = db.query(func.sum(CategoryRule.category_limit)).filter(
+        CategoryRule.user_id == current_user.id
+    ).scalar() or 0
+
     # Initialize all categories with 0 spend
-    all_rules = db.query(CategoryRule).all()            
+    all_rules = db.query(CategoryRule).filter(CategoryRule.user_id == current_user.id).all()
     category_spending = {rule.main_category: 0 for rule in all_rules if rule.main_category}
-    
+
+    categorized_spent = 0.0
     for inv in invoices:
         cat = inv.main_category
         if cat:
-            category_spending[cat] = category_spending.get(cat, 0) + (inv.amount or 0)
-    
+            amount = inv.amount or 0
+            category_spending[cat] = category_spending.get(cat, 0) + amount
+            categorized_spent += amount
+
     category_breakdown = []
     for cat, spent in sorted(category_spending.items(), key=lambda x: x[1], reverse=True):
-            rule = db.query(CategoryRule).filter(CategoryRule.main_category == cat).first()
+            rule = db.query(CategoryRule).filter(
+                CategoryRule.main_category == cat, CategoryRule.user_id == current_user.id
+            ).first()
             limit = rule.category_limit if rule else None
             category_breakdown.append({
                 "category": cat,
                 "spent": round(spent, 2),
                 "limit": limit,
                 "percentage_of_total": round((spent / total_spent * 100), 1) if total_spent > 0 else 0,
-                "percentage_of_limit": round((spent / limit * 100), 1) if limit else None
+                "percentage_of_limit": round((spent / limit * 100), 1) if limit else None,
+                "pace": pace_of(spent, limit)
             })
+
+    # Uncategorized spend — keep parts summing to the whole
+    uncategorized = total_spent - categorized_spent
+    if uncategorized > 0.005:
+        category_breakdown.append({
+            "category": "Uncategorized",
+            "spent": round(uncategorized, 2),
+            "limit": None,
+            "percentage_of_total": round((uncategorized / total_spent * 100), 1) if total_spent > 0 else 0,
+            "percentage_of_limit": None,
+            "pace": None
+        })
         
-        # Top merchants
+    # Top merchants
     merchant_spending = {}
     for inv in invoices:
             if inv.merchant:
@@ -538,16 +606,95 @@ def cycle_analysis(cycle_id: int):
             "budget_percentage_used": round((total_spent / total_budget * 100), 1) if total_budget > 0 else 0,
             "transaction_count": transaction_count,
             "average_transaction": round(average_transaction, 2),
+            "time_elapsed_pct": time_elapsed_pct,
+            "cycle_days": cycle_days,
+            "overall_pace": pace_of(total_spent, total_budget),
             "category_breakdown": category_breakdown,
             "top_merchants": top_merchants,
         }
 
+@app.get("/cycles/{cycle_id}/top-categories")
+def cycle_top_categories(cycle_id: int, current_user = Depends(get_current_user)):
+    """Ranked spending by main category for a cycle, with sub-category breakdown."""
+    db = SessionLocal()
+    try:
+        cycle = db.query(BudgetCycle).filter(
+            BudgetCycle.id == cycle_id, BudgetCycle.user_id == current_user.id
+        ).first()
+        if not cycle:
+            raise HTTPException(status_code=404, detail="Cycle not found")
+
+        end = cycle.end_date or datetime.now()
+        invoices = db.query(Invoice).filter(
+            Invoice.created_at >= cycle.start_date,
+            Invoice.created_at <= end,
+            Invoice.extraction_status == "success",
+            Invoice.user_id == current_user.id
+        ).all()
+
+        total_spent = sum((inv.amount or 0) for inv in invoices)
+
+        # Uncategorized spend so parts sum to the whole
+        uncategorized = sum((inv.amount or 0) for inv in invoices if not inv.main_category)
+        uncategorized_count = sum(1 for inv in invoices if not inv.main_category)
+
+        # Aggregate per main category and sub category
+        main_agg = {}  # cat -> {"spent": float, "count": int}
+        sub_agg = {}   # cat -> {sub: {"spent": float, "count": int}}
+        for inv in invoices:
+            cat = inv.main_category
+            if not cat:
+                continue
+            amount = inv.amount or 0
+            entry = main_agg.setdefault(cat, {"spent": 0.0, "count": 0})
+            entry["spent"] += amount
+            entry["count"] += 1
+
+            sub = inv.sub_category or "Uncategorized"
+            subs = sub_agg.setdefault(cat, {})
+            sub_entry = subs.setdefault(sub, {"spent": 0.0, "count": 0})
+            sub_entry["spent"] += amount
+            sub_entry["count"] += 1
+
+        categories = []
+        for cat, agg in sorted(main_agg.items(), key=lambda x: x[1]["spent"], reverse=True):
+            sub_categories = [
+                {"name": sub, "spent": round(s["spent"], 2), "count": s["count"]}
+                for sub, s in sorted(sub_agg.get(cat, {}).items(), key=lambda x: x[1]["spent"], reverse=True)
+            ]
+            categories.append({
+                "category": cat,
+                "spent": round(agg["spent"], 2),
+                "count": agg["count"],
+                "percentage_of_total": round((agg["spent"] / total_spent * 100), 1) if total_spent > 0 else 0,
+                "sub_categories": sub_categories,
+            })
+
+        if uncategorized > 0.005:
+            categories.append({
+                "category": "Uncategorized",
+                "spent": round(uncategorized, 2),
+                "count": uncategorized_count,
+                "percentage_of_total": round((uncategorized / total_spent * 100), 1) if total_spent > 0 else 0,
+                "sub_categories": [],
+            })
+
+        return {
+            "cycle_id": cycle.id,
+            "total_spent": round(total_spent, 2),
+            "categories": categories,
+        }
+    finally:
+        db.close()
+
 @app.get("/cycles/{cycle_id}/spending-timeline")
-def cycle_spending_timeline(cycle_id: int):
+def cycle_spending_timeline(cycle_id: int, current_user = Depends(get_current_user)):
     """Get daily spending data for a cycle, filling in zero-spend days"""
     db = SessionLocal()
     try:
-        cycle = db.get(BudgetCycle, cycle_id)
+        cycle = db.query(BudgetCycle).filter(
+            BudgetCycle.id == cycle_id, BudgetCycle.user_id == current_user.id
+        ).first()
         if not cycle:
             return {"data": []}
 
@@ -563,7 +710,8 @@ def cycle_spending_timeline(cycle_id: int):
         ).filter(
             Invoice.created_at >= cycle.start_date,
             Invoice.created_at <= end,
-            Invoice.extraction_status == "success"
+            Invoice.extraction_status == "success",
+            Invoice.user_id == current_user.id
         ).group_by(func.date(Invoice.created_at)).all()
 
         # Build lookup

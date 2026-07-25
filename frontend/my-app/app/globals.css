@@ -137,18 +137,18 @@ html[dir="rtl"] body {
   outline-offset: 2px;
 }
 
-/* Heading utility — tight, technical */
+/* Heading utility — same family, heavier weight */
 .font-heading {
   font-family: 'Inter', system-ui, sans-serif;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
 
-/* Monospace numbers — the signature */
+/* Data/numbers — unified to Inter with tabular figures */
 .font-data {
-  font-family: var(--font-jetbrains), 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  font-family: 'Inter', system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum", "zero";
+  font-feature-settings: "tnum";
 }
 
 /* Tabular numbers fallback */
@@ -157,9 +157,10 @@ html[dir="rtl"] body {
   font-feature-settings: "tnum";
 }
 
-/* Handwritten font — for annotations and notes */
+/* Handwritten annotations — unified to Inter italic */
 .font-handwritten {
-  font-family: var(--font-caveat), 'Caveat', cursive;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-style: italic;
 }
 
 /* Panel — primary card surface */

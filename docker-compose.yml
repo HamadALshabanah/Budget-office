@@ -1,0 +1,27 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - sqlite-data:/data
+    environment:
+      - SQLITE_PATH=/data/invoices.db
+    env_file:
+      - settings.env
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend/my-app
+      args:
+        # Browser talks to the backend via the host's published port
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  sqlite-data:

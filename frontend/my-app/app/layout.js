@@ -1,4 +1,4 @@
-import { Inter, JetBrains_Mono, Tajawal, Caveat } from "next/font/google";
+import { Inter, Tajawal } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "../lib/LanguageContext";
 
@@ -8,24 +8,10 @@ const inter = Inter({
   display: "swap",
 });
 
-const jetbrains = JetBrains_Mono({
-  variable: "--font-jetbrains",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  display: "swap",
-});
-
 const tajawal = Tajawal({
   variable: "--font-tajawal",
   subsets: ["arabic"],
   weight: ["400", "500", "700"],
-  display: "swap",
-});
-
-const caveat = Caveat({
-  variable: "--font-caveat",
-  subsets: ["latin"],
-  weight: ["500", "700"],
   display: "swap",
 });
 
@@ -38,7 +24,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body
-        className={`${inter.variable} ${jetbrains.variable} ${tajawal.variable} ${caveat.variable} antialiased`}
+        className={`${inter.variable} ${tajawal.variable} antialiased`}
       >
         <LanguageProvider>
           {children}

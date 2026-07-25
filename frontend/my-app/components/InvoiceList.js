@@ -66,9 +66,10 @@ export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId 
           max_amount: maxAmount || undefined,
         });
       }
-      setInvoices(data);
+      setInvoices(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error(err);
+      setInvoices([]);
     } finally {
       setLoading(false);
     }
@@ -132,7 +133,10 @@ export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId 
     };
   };
 
-  const totalAmount = invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+  const totalAmount = (Array.isArray(invoices) ? invoices : []).reduce(
+    (sum, inv) => sum + (Number(inv?.amount) || 0),
+    0
+  );
 
   return (
     <div className="panel overflow-hidden">

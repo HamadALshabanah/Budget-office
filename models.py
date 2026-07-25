@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime
 
 from sqlalchemy import DateTime, Float, ForeignKey, String, func, create_engine
@@ -10,7 +11,8 @@ class Base(DeclarativeBase):
 	pass
 
 
-engine = create_engine("sqlite+pysqlite:///invoices.db", echo=False, future=True)
+DB_PATH = os.environ.get("SQLITE_PATH", "invoices.db")
+engine = create_engine(f"sqlite+pysqlite:///{DB_PATH}", echo=False, future=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
 
 class User(Base):
