@@ -119,9 +119,10 @@ async def receive_sms(req: InvoiceReq,current_user = Depends(get_current_user_or
     print(f"Received SMS data: {req}")
     init_db()
     invoice_data_schema = extract_amount(req.message)
-    invoice_data_schema.user_id = current_user.id
+    invoice_dict = invoice_data_schema.model_dump()
+    invoice_dict["user_id"] = current_user.id
     
-    insert_invoice(invoice_data_schema.model_dump())
+    insert_invoice(invoice_dict)
     
     return {
         "status": "SMS processed", 
