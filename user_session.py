@@ -1,14 +1,16 @@
 import datetime
+import hashlib
 import os
-from typing import Annotated
+from typing import Annotated, Optional
 import jwt
 import bcrypt
 from dotenv import load_dotenv
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Security
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
-
-from models import SessionLocal, User
+from fastapi.security import APIKeyHeader
+api_key_header = APIKeyHeader(name="X-API-KEY")
+from models import SessionLocal, User, APIKey
 
 load_dotenv("settings.env")
 SECRET_KEY = os.environ["JWT_SECRET_KEY"]
@@ -57,19 +59,34 @@ def decode_token(token: str) -> int:
     return int(payload["sub"])
 
 
-def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db=Depends(get_db_session)) -> User:
-    user_id = decode_token(token)
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    # Eagerly load scalar attributes while the session is open so
-    # `current_user.id` works even if the object later becomes detached.
-    user_id_value = user.id
-    db.expunge(user)
-    user.id = user_id_value
-    return user
+def get_current_user_or_apikey(
+    token: Annotated[Optional[str], Depends(oauth2_scheme)],
+    user_api_key: Annotated[Optional[str], Depends(api_key_header)],
+    db=Depends(get_db_session),
+) -> User:
+    if user_api_key:
+        key_hash = hashlib.sha256(user_api_key.encode()).hexdigest()
+        api_key = db.query(APIKey).filter(
+            APIKey.key_hash == key_hash, APIKey.revoked == False
+        ).first()
+        if not api_key:
+            raise HTTPException(status_code=401, detail="Invalid API key")
+        user = db.query(User).filter(User.id == api_key.user_id).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        db.expunge(user)
+        return user
 
+    # Fall back to JWT
+    if token:
+        user_id = decode_token(token)
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        db.expunge(user)
+        return user
 
+    raise HTTPException(status_code=401, detail="Not authenticated")
 @router.post("/register", status_code=201)
 def register(req: RegisterRequest, db=Depends(get_db_session)):
     existing = db.query(User).filter(User.username == req.username).first()

@@ -1,13 +1,15 @@
+import hashlib
+
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List,Dict,Optional
-from models import insert_invoice, init_db, SessionLocal, CategoryRule, Invoice, BudgetCycle, TransferLimitReq
+from models import APIKey, insert_invoice, init_db, SessionLocal, CategoryRule, Invoice, BudgetCycle, TransferLimitReq
 from sqlalchemy import func
 from datetime import datetime, timedelta
 from schema import InvoiceReq, InvoiceData, CategoryRuleReq, UpdateInvoiceReq
 from user_session import router as auth_router
-from user_session import get_current_user, get_db_session, User
+from user_session import get_current_user_or_apikey, get_db_session, User
 app = FastAPI()
 
 app.add_middleware(
@@ -79,9 +81,25 @@ def classify_sms(merchant: str):
         return None,None,None
     finally:
         db.close()    
+import secrets
+
+@app.post("/api-keys")
+def create_api_key(current_user=Depends(get_current_user_or_apikey), db=Depends(get_db_session)):
+    raw = "bk_" + secrets.token_urlsafe(32)
+    key_hash = hashlib.sha256(raw.encode()).hexdigest()
+    db.query(APIKey).filter(APIKey.user_id == current_user.id).delete()
+    db.add(APIKey(key_hash=key_hash, user_id=current_user.id))
+    db.commit()
+    return {"api_key": raw}  # shown once
+
+@app.delete("/api-keys")
+def revoke_api_key(current_user=Depends(get_current_user_or_apikey), db=Depends(get_db_session)):
+    db.query(APIKey).filter(APIKey.user_id == current_user.id).update({"revoked": True})
+    db.commit()
+    return {"status": "revoked"}
 
 @app.post("/rules")
-def add_category(rule:CategoryRuleReq,current_user = Depends(get_current_user)):
+def add_category(rule:CategoryRuleReq,current_user = Depends(get_current_user_or_apikey)):
     db = SessionLocal()
     category_rule = CategoryRule(
         merchant_keywords=rule.merchant_keywords,
@@ -97,7 +115,7 @@ def add_category(rule:CategoryRuleReq,current_user = Depends(get_current_user)):
     return {"status":f"Category {rule.classification} added successfully"}
 
 @app.post("/sms")
-async def receive_sms(req: InvoiceReq,current_user = Depends(get_current_user)):
+async def receive_sms(req: InvoiceReq,current_user = Depends(get_current_user_or_apikey)):
     print(f"Received SMS data: {req}")
     init_db()
     invoice_data_schema = extract_amount(req.message)
@@ -114,7 +132,7 @@ async def receive_sms(req: InvoiceReq,current_user = Depends(get_current_user)):
 @app.get("/invoices")
 def get_invoices(skip: int = 0, limit: int = 100, search: Optional[str] = None, 
                  category: Optional[str] = None, min_amount: Optional[float] = None, 
-                 max_amount: Optional[float] = None, current_user = Depends(get_current_user)):
+                 max_amount: Optional[float] = None, current_user = Depends(get_current_user_or_apikey)):
     db = SessionLocal()
     query = db.query(Invoice).filter(Invoice.user_id == current_user.id)
 
@@ -132,14 +150,14 @@ def get_invoices(skip: int = 0, limit: int = 100, search: Optional[str] = None,
     return invoices
 
 @app.get("/rules")
-def get_rules_list(current_user = Depends(get_current_user)):
+def get_rules_list(current_user = Depends(get_current_user_or_apikey)):
     db = SessionLocal()
     rules = db.query(CategoryRule).filter(CategoryRule.user_id == current_user.id).all()
     db.close()
     return rules
 
 @app.get("/categories")
-def get_categories(current_user = Depends(get_current_user)):
+def get_categories(current_user = Depends(get_current_user_or_apikey)):
     db = SessionLocal()
     rules = db.query(CategoryRule.main_category).filter(CategoryRule.user_id == current_user.id).distinct().all()
     categories = [r[0] for r in rules if r[0]]
@@ -147,7 +165,7 @@ def get_categories(current_user = Depends(get_current_user)):
     return categories
     
 @app.get("/rules/{rule_id}")    
-def get_rule(rule_id: int, current_user = Depends(get_current_user)):
+def get_rule(rule_id: int, current_user = Depends(get_current_user_or_apikey)):
     db = SessionLocal()
     rule = db.query(CategoryRule).filter(CategoryRule.id == rule_id, CategoryRule.user_id == current_user.id).first()
     db.close()
@@ -163,7 +181,7 @@ def get_rule(rule_id: int, current_user = Depends(get_current_user)):
     }
 
 @app.get("/invoices/{invoice_id}")
-def get_invoice(invoice_id:int, current_user = Depends(get_current_user)):
+def get_invoice(invoice_id:int, current_user = Depends(get_current_user_or_apikey)):
     db = SessionLocal()
     invoice = db.query(Invoice).filter(Invoice.id == invoice_id, Invoice.user_id == current_user.id).first()
     db.close()
@@ -181,7 +199,7 @@ def get_invoice(invoice_id:int, current_user = Depends(get_current_user)):
     }
 
 @app.patch("/invoices/{invoice_id}")
-def update_invoice(invoice_id:int, req: UpdateInvoiceReq,current_user = Depends(get_current_user)):
+def update_invoice(invoice_id:int, req: UpdateInvoiceReq,current_user = Depends(get_current_user_or_apikey)):
     print(f"Updating invoice {invoice_id} with data: {req}")
     db = SessionLocal()
     invoice = db.query(Invoice).filter(Invoice.id == invoice_id, Invoice.user_id == current_user.id).first()
@@ -196,7 +214,7 @@ def update_invoice(invoice_id:int, req: UpdateInvoiceReq,current_user = Depends(
     return {"status": f"Invoice {invoice_id} updated successfully"}
 
 @app.patch("/rules/{rule_id}")
-def update_rule(rule_id:int, req: CategoryRuleReq, current_user = Depends(get_current_user)):
+def update_rule(rule_id:int, req: CategoryRuleReq, current_user = Depends(get_current_user_or_apikey)):
     db = SessionLocal()
     rule = db.query(CategoryRule).filter(CategoryRule.id == rule_id, CategoryRule.user_id == current_user.id).first()
     if not rule:
@@ -212,7 +230,7 @@ def update_rule(rule_id:int, req: CategoryRuleReq, current_user = Depends(get_cu
     return {"status": f"Rule {rule_id} updated successfully"}
 
 @app.delete("/invoices/{invoice_id}")
-def delete_invoice(invoice_id: int, current_user = Depends(get_current_user)):
+def delete_invoice(invoice_id: int, current_user = Depends(get_current_user_or_apikey)):
     db = SessionLocal()
     invoice = db.query(Invoice).filter(Invoice.id == invoice_id, Invoice.user_id == current_user.id).first()
     if not invoice:
@@ -223,7 +241,7 @@ def delete_invoice(invoice_id: int, current_user = Depends(get_current_user)):
     return {"status": f"Invoice {invoice_id} deleted successfully"}
 
 @app.delete("/rules/{rule_id}")
-def delete_rule(rule_id: int, current_user = Depends(get_current_user)):
+def delete_rule(rule_id: int, current_user = Depends(get_current_user_or_apikey)):
     db= SessionLocal()
     rule = db.query(CategoryRule).filter(CategoryRule.id == rule_id, CategoryRule.user_id == current_user.id).first()
     if not rule:
@@ -234,7 +252,7 @@ def delete_rule(rule_id: int, current_user = Depends(get_current_user)):
     return {"status": f"Rule {rule_id} deleted successfully"}
 
 @app.get("/categories/{category}/limit")
-def get_category_limit(category: str,current_user = Depends(get_current_user)):
+def get_category_limit(category: str,current_user = Depends(get_current_user_or_apikey)):
     db = SessionLocal()
     rule = db.query(CategoryRule).filter(CategoryRule.main_category == category, CategoryRule.user_id == current_user.id).first()
     db.close()
@@ -246,7 +264,7 @@ def get_category_limit(category: str,current_user = Depends(get_current_user)):
     }
 
 @app.post("/cycles/start")
-def start_new_cycle(start_date: Optional[str] = None,end_date: Optional[str] = None,current_user = Depends(get_current_user)):
+def start_new_cycle(start_date: Optional[str] = None,end_date: Optional[str] = None,current_user = Depends(get_current_user_or_apikey)):
     """Start a new budget cycle (resets spending tracking)
     
     Args:
@@ -296,7 +314,7 @@ def start_new_cycle(start_date: Optional[str] = None,end_date: Optional[str] = N
         }
 
 @app.delete("/cycles/{cycle_id}")
-def delete_cycle(cycle_id: int, current_user = Depends(get_current_user)):
+def delete_cycle(cycle_id: int, current_user = Depends(get_current_user_or_apikey)):
     """Delete a budget cycle and all its associated data (use with caution)"""
     db = SessionLocal()
     cycle = db.query(BudgetCycle).filter(
@@ -311,7 +329,7 @@ def delete_cycle(cycle_id: int, current_user = Depends(get_current_user)):
     return {"status": f"Cycle {cycle_id} deleted successfully"}
 
 @app.post("/cycles/end")
-def end_current_cycle(current_user = Depends(get_current_user)):
+def end_current_cycle(current_user = Depends(get_current_user_or_apikey)):
     """Force end the current active budget cycle"""
     db = SessionLocal()
     active_cycles = db.query(BudgetCycle).filter(
@@ -334,7 +352,7 @@ def end_current_cycle(current_user = Depends(get_current_user)):
     
 # Endpoint gets the remaining limit for a given main category
 @app.get("/categories/{category}/remaining-limit")
-def get_remaining_limit(category: str, current_user = Depends(get_current_user)):
+def get_remaining_limit(category: str, current_user = Depends(get_current_user_or_apikey)):
     db = SessionLocal()
     rule = db.query(CategoryRule).filter(CategoryRule.main_category == category, CategoryRule.user_id == current_user.id).first()
     if not rule or rule.category_limit is None:
@@ -358,7 +376,7 @@ def get_remaining_limit(category: str, current_user = Depends(get_current_user))
     
 
 @app.post("/invoices/categorize")
-def categorize_invoices(current_user = Depends(get_current_user)):
+def categorize_invoices(current_user = Depends(get_current_user_or_apikey)):
     """Re-categorize all invoices based on current rules"""
     db = SessionLocal()
     invoices = db.query(Invoice).filter(Invoice.user_id == current_user.id).all()
@@ -377,7 +395,7 @@ def categorize_invoices(current_user = Depends(get_current_user)):
     return {"status": "success", "updated_invoices": updated_count}
 
 @app.get("/cycles/{cycle_id}/invoices")
-def get_cycle_invoices(cycle_id: int, current_user = Depends(get_current_user)):
+def get_cycle_invoices(cycle_id: int, current_user = Depends(get_current_user_or_apikey)):
     """Get all successful invoices for a specific cycle"""
     db = SessionLocal()
     cycle = db.query(BudgetCycle).filter(
@@ -409,7 +427,7 @@ def get_cycle_invoices(cycle_id: int, current_user = Depends(get_current_user)):
         for inv in invoices
     ]
 @app.get("/cycles/history")
-def get_cycle_history(limit: int = 12, current_user = Depends(get_current_user)):
+def get_cycle_history(limit: int = 12, current_user = Depends(get_current_user_or_apikey)):
     """Get past budget cycles"""
     db = SessionLocal()
     try:
@@ -441,7 +459,7 @@ def get_cycle_history(limit: int = 12, current_user = Depends(get_current_user))
         db.close()
         
 @app.get("/cycles/current")
-def get_current_cycle(current_user = Depends(get_current_user)):
+def get_current_cycle(current_user = Depends(get_current_user_or_apikey)):
     """Get the current active budget cycle"""
     db = SessionLocal()
     try:
@@ -473,7 +491,7 @@ def get_current_cycle(current_user = Depends(get_current_user)):
         db.close()
 
 @app.get("/categories/{category}/analysis")
-def category_analysis(category: str, current_user = Depends(get_current_user)):
+def category_analysis(category: str, current_user = Depends(get_current_user_or_apikey)):
     db = SessionLocal()
     total_spent = db.query(func.sum(Invoice.amount)).filter(
         Invoice.main_category == category,
@@ -498,7 +516,7 @@ def category_analysis(category: str, current_user = Depends(get_current_user)):
     }
     
 @app.get("/cycles/{cycle_id}/analysis")
-def cycle_analysis(cycle_id: int,current_user = Depends(get_current_user)):
+def cycle_analysis(cycle_id: int,current_user = Depends(get_current_user_or_apikey)):
     db = SessionLocal()
     
     cycle = db.query(BudgetCycle).filter(BudgetCycle.id == cycle_id, BudgetCycle.user_id == current_user.id).first()
@@ -614,7 +632,7 @@ def cycle_analysis(cycle_id: int,current_user = Depends(get_current_user)):
         }
 
 @app.get("/cycles/{cycle_id}/top-categories")
-def cycle_top_categories(cycle_id: int, current_user = Depends(get_current_user)):
+def cycle_top_categories(cycle_id: int, current_user = Depends(get_current_user_or_apikey)):
     """Ranked spending by main category for a cycle, with sub-category breakdown."""
     db = SessionLocal()
     try:
@@ -688,7 +706,7 @@ def cycle_top_categories(cycle_id: int, current_user = Depends(get_current_user)
         db.close()
 
 @app.get("/cycles/{cycle_id}/spending-timeline")
-def cycle_spending_timeline(cycle_id: int, current_user = Depends(get_current_user)):
+def cycle_spending_timeline(cycle_id: int, current_user = Depends(get_current_user_or_apikey)):
     """Get daily spending data for a cycle, filling in zero-spend days"""
     db = SessionLocal()
     try:

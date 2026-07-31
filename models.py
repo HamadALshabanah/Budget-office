@@ -20,6 +20,13 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     username: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String, nullable=False)
+class APIKey(Base):
+    __tablename__ = "api_keys"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    key_hash: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    revoked: Mapped[bool] = mapped_column(default=False, nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)                                                
 class Invoice(Base):
     __tablename__ = "invoices"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
