@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 
@@ -211,5 +211,31 @@ export async function categorizeInvoices() {
         method: 'POST',
         headers: { ...getAuthHeader() },
     });
+    return res.json();
+}
+
+// ── API Key Management ────────────────────────────────────────────────────────
+
+export async function createApiKey() {
+    const res = await fetch(`${API_URL}/api-keys`, {
+        method: 'POST',
+        headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to generate API key');
+    }
+    return res.json();
+}
+
+export async function revokeApiKey() {
+    const res = await fetch(`${API_URL}/api-keys`, {
+        method: 'DELETE',
+        headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to revoke API key');
+    }
     return res.json();
 }

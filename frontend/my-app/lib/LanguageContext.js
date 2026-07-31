@@ -58,6 +58,20 @@ const translations = {
     applying: "Applying...",
     appliedSuccess: "Updated",
     invoices: "invoices",
+    // Settings / API Keys
+    settings: "Settings",
+    back: "Back",
+    apiKeys: "API Keys",
+    apiKeyLabel: "API Key",
+    generateApiKey: "Generate API Key",
+    regenerateApiKey: "Regenerate",
+    revokeApiKey: "Revoke",
+    apiKeyGenerated: "API key generated",
+    apiKeyRevoked: "API key revoked",
+    apiKeyOnlyShownOnce: "This key will only be shown once. Store it securely. Regenerating replaces the old key; revoking disables it immediately.",
+    copyApiKey: "Copy",
+    copied: "Copied!",
+    revokeConfirm: "Are you sure you want to revoke this API key? Any service using it will stop working immediately.",
   },
   ar: {
     locale: "ar-SA",
@@ -113,6 +127,20 @@ const translations = {
     applying: "جاري التطبيق...",
     appliedSuccess: "تم تحديث",
     invoices: "فاتورة",
+    // Settings / API Keys
+    settings: "الإعدادات",
+    back: "رجوع",
+    apiKeys: "مفاتيح API",
+    apiKeyLabel: "المفتاح",
+    generateApiKey: "إنشاء مفتاح",
+    regenerateApiKey: "إعادة الإنشاء",
+    revokeApiKey: "إلغاء",
+    apiKeyGenerated: "تم إنشاء المفتاح",
+    apiKeyRevoked: "تم إلغاء المفتاح",
+    apiKeyOnlyShownOnce: "سيظهر هذا المفتاح مرة واحدة فقط. احفظه بشكل آمن. إعادة الإنشاء تستبدل المفتاح القديم؛ والإلغاء يوقفه فوراً.",
+    copyApiKey: "نسخ",
+    copied: "تم النسخ!",
+    revokeConfirm: "هل أنت متأكد من إلغاء هذا المفتاح؟ أي خدمة تستخدمه سوف تتوقف فوراً.",
   }
 };
 

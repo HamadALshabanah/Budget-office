@@ -7,7 +7,7 @@ import BudgetCycle from '../components/BudgetCycle';
 import CycleSummary from '../components/CycleSummary';
 import CategoriesPanel from '../components/CategoriesPanel';
 import BudgetOverview from '../components/BudgetOverview';
-import { Settings, Globe, Activity, Moon, Sun, Plus, X } from 'lucide-react';
+import { Settings, Globe, Activity, Moon, Sun, Plus, X, Key } from 'lucide-react';
 import { useLanguage } from '../lib/LanguageContext';
 import { getCycleHistory, isAuthenticated, logout } from '../lib/api';
 import { useRouter } from 'next/navigation';
@@ -79,6 +79,9 @@ export default function Home() {
             <Link href="/rules" className="btn-secondary flex items-center gap-1.5 px-2.5 py-1.5 text-xs">
               <Settings className="w-3.5 h-3.5" />
               {t('manageRules')}
+            </Link>
+            <Link href="/settings" className="btn-secondary flex items-center justify-center w-8 h-8 p-0" title={t('settings')}>
+              <Key className="w-3.5 h-3.5" />
             </Link>
             <button
               onClick={handleLogout}
