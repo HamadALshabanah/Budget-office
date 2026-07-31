@@ -175,8 +175,9 @@ export default function Home() {
             </div>
           </div>
           <div className="space-y-5">
-            <CategoriesPanel refreshTrigger={refreshKey} selectedCycleId={selectedCycleId} />
             <BudgetOverview refreshTrigger={refreshKey} selectedCycleId={selectedCycleId} />
+
+            <CategoriesPanel refreshTrigger={refreshKey} selectedCycleId={selectedCycleId} />
           </div>
         </section>
 
