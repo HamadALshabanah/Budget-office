@@ -9,13 +9,11 @@ from fastapi import APIRouter, Depends, HTTPException, Security
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from fastapi.security import APIKeyHeader
-api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
 from models import SessionLocal, User, APIKey
-
-load_dotenv("settings.env")
-SECRET_KEY = os.environ["JWT_SECRET_KEY"]
-ALGORITHM = os.environ.get("JWT_ALGORITHM", "HS256")
+from app.config import SECRET_KEY, ALGORITHM
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+from app.db import get_db_session
+api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
@@ -32,12 +30,6 @@ class RegisterRequest(BaseModel):
     password: str
 
 
-def get_db_session():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 def create_token(user_id: int) -> str:

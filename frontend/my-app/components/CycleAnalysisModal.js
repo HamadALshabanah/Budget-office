@@ -28,7 +28,7 @@ const translations = {
         budget: "إجمالي الميزانية",
         remaining: "المتبقي",
         transactions: "المعاملات",
-        avgTransaction: "متوسط المعاملة",
+        avgTransaction: "متوسط الفاتورة",
         budgetUsed: "الميزانية المستخدمة",
         categoryBreakdown: "توزيع الفئات",
         topMerchants: "أكثر التجار",

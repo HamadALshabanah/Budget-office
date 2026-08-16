@@ -121,7 +121,7 @@ export default function CycleSummary({ refreshTrigger, selectedCycleId }) {
                     <p className="text-[10px] mt-2 font-data" style={{ color: 'var(--text-muted)' }}>
                         <span style={{ color: 'var(--text-secondary)' }}>SAR</span>
                         {' '}&mdash;{' '}
-                        {data.transaction_count ?? 0} {isRTL ? 'معاملة' : 'transactions'}
+                        {data.transaction_count ?? 0} {isRTL ? 'الفاتورة' : 'transactions'}
                     </p>
                 </div>
 

@@ -88,5 +88,3 @@ class TransferLimitReq(Base):
     amount: Mapped[float] = mapped_column(Float, nullable=False)
     
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
-def init_db() -> None:
-	Base.metadata.create_all(bind=engine)
