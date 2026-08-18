@@ -11,11 +11,8 @@ from pydantic import BaseModel
 from fastapi.security import APIKeyHeader
 from models import SessionLocal, User, APIKey
 from app.config import SECRET_KEY, ALGORITHM
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("ACCESS_TOKEN_EXPIRE_MINUTES", "6000"))
 from app.db import get_db_session
-api_key_header = APIKeyHeader(name="X-API-KEY", auto_error=False)
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -51,34 +48,6 @@ def decode_token(token: str) -> int:
     return int(payload["sub"])
 
 
-def get_current_user_or_apikey(
-    token: Annotated[Optional[str], Depends(oauth2_scheme)],
-    user_api_key: Annotated[Optional[str], Depends(api_key_header)],
-    db=Depends(get_db_session),
-) -> User:
-    if user_api_key:
-        key_hash = hashlib.sha256(user_api_key.encode()).hexdigest()
-        api_key = db.query(APIKey).filter(
-            APIKey.key_hash == key_hash, APIKey.revoked == False
-        ).first()
-        if not api_key:
-            raise HTTPException(status_code=401, detail="Invalid API key")
-        user = db.query(User).filter(User.id == api_key.user_id).first()
-        if not user:
-            raise HTTPException(status_code=401, detail="User not found")
-        db.expunge(user)
-        return user
-
-    # Fall back to JWT
-    if token:
-        user_id = decode_token(token)
-        user = db.query(User).filter(User.id == user_id).first()
-        if not user:
-            raise HTTPException(status_code=401, detail="User not found")
-        db.expunge(user)
-        return user
-
-    raise HTTPException(status_code=401, detail="Not authenticated")
 @router.post("/register", status_code=201)
 def register(req: RegisterRequest, db=Depends(get_db_session)):
     existing = db.query(User).filter(User.username == req.username).first()
