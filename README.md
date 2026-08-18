@@ -1,214 +1,192 @@
-# Budget Office - Personal Finance Terminal
+# Budget Office
 
-A retro-styled personal finance system built with **FastAPI** and **Next.js**, designed to automatically ingest, extract, and categorize expenses from SMS transaction notifications.
+A personal finance terminal that turns bank SMS notifications into a
+categorized, budget-tracked ledger.
 
-![Budget Office Terminal UI](images/image.png)
+Built with **FastAPI + SQLite** (backend) and **Next.js** (frontend).
 
-![Budget Office catrogires UI](/images/categories.png)
+## What it does
 
-## 🚀 Features
+- Ingests Arabic bank SMS (pushed from an iOS Shortcut or typed in the web app)
+- Extracts the amount (`مبلغ`) and merchant (`لدى`) from each message
+- Auto-classifies expenses using your keyword rules (e.g. "Starbucks" → Food → Coffee)
+- Tracks per-category spending limits and rolling budget cycles
+- Tells you your spending pace: **ahead / on track / behind**
+- Failed extractions are still saved, so you can add a rule and re-categorize later
 
-* **SMS Parsing**: Automatically extracts *Amount* and *Merchant* from Arabic bank SMS messages from IOS shortcuts
-* **Auto-Classification**: Rule-based system to categorize merchants (e.g., "Al Nahdi" → "Health")
-* **Budget Limits**: Set spending limits per category and track remaining balance
-* **Learning System**: Unknown merchants saved as "Unclassified" - add rules for future auto-categorization or immediate categorization
-* **Bilingual UI**: Full English/Arabic support with RTL layout
-* **Retro Terminal UI**: Dark 80's financial terminal aesthetic with neon accents
-
-## 🛠️ Technology Stack
-
-### Backend
-* **Python 3.9+**
-* **FastAPI** - REST API framework
-* **SQLAlchemy** - Database ORM
-* **SQLite** - Lightweight database storage
-* **Pydantic** - Data validation
-
-### Frontend
-* **Next.js 16** - React framework
-* **Tailwind CSS 4** - Styling
-* **Lucide React** - Icons
-
-## 🏃‍♂️ How to Run
+## Quick start
 
 ### Backend
+
 ```bash
-# Install dependencies
 pip install fastapi uvicorn sqlalchemy pydantic
-
-# Start the server
 uvicorn main:app --reload
 ```
 
+- API: `http://127.0.0.1:8000` — Swagger docs at `/docs`
+
 ### Frontend
+
 ```bash
 cd frontend/my-app
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
 
-### Access
-* **Frontend**: `http://localhost:3000`
-* **API Docs (Swagger)**: `http://127.0.0.1:8000/docs`
-* **API Docs (ReDoc)**: `http://127.0.0.1:8000/redoc`
+- App: `http://localhost:3000`
 
----
+## How it works
 
-## 📡 API Endpoints
+Every SMS is stored — even when parsing fails. A successful parse extracts
+the amount and merchant; the merchant is then matched against your keyword
+rules (first match wins). Only successful invoices count toward your
+category limits. Limits live on the rules themselves, and a budget cycle
+(one active at a time, default 30 days) gives you the pace view: if you've
+spent more % of your budget than % of the cycle has elapsed (by more than
+10 points), you're flagged **ahead**.
 
-### SMS Processing
+### SMS ingestion flow
 
-#### `POST /sms`
-Ingest and process a bank SMS message. Extracts amount, merchant, and auto-classifies based on rules.
+```mermaid
+sequenceDiagram
+    autonumber
+    participant IOS as iOS Shortcut / Frontend
+    participant API as FastAPI (main.py)
+    participant Auth as get_current_user_or_apikey
+    participant Ext as extract_amount()
+    participant Cls as classify_sms()
+    participant DB as SQLite (invoices.db)
 
-**Request:**
-```json
-{
-  "message": "عملية شراء\nمبلغ: 50.00 SAR\nلدى: Al Nahdi"
-}
+    IOS->>API: POST /sms {message} + Bearer JWT or X-API-KEY
+    activate API
+
+    rect rgb(220, 235, 250)
+    note over API,Auth: Auth dependency — runs on every protected endpoint
+    API->>Auth: resolve current user
+    alt X-API-KEY header present
+        Auth->>DB: SELECT api_keys WHERE key_hash = sha256(key)
+        DB-->>Auth: api_key → user_id
+        Auth->>DB: SELECT users WHERE id = user_id
+        DB-->>Auth: user
+    else Bearer JWT present
+        Auth->>Auth: jwt.decode(token) → user_id
+        Auth->>DB: SELECT users WHERE id = user_id
+        DB-->>Auth: user
+    else neither / invalid
+        Auth-->>API: 401 Not authenticated
+    end
+    Auth-->>API: current_user
+    end
+
+    API->>Ext: parse raw SMS
+    activate Ext
+    note right of Ext: Splits each line on ":",<br/>looks for مبلغ (amount) + لدى (merchant)
+    alt "مبلغ" and "لدى" found, amount parses as float
+        Ext->>Cls: classify_sms(merchant)
+        activate Cls
+        Cls->>DB: SELECT category_rules (all rules)
+        DB-->>Cls: rules[]
+        loop for each rule
+            Cls->>Cls: does a keyword appear in merchant?
+        end
+        alt keyword match
+            Cls-->>Ext: (classification, main_category, sub_category)
+        else no match
+            Cls-->>Ext: (None, None, None)
+        end
+        deactivate Cls
+        Ext-->>API: InvoiceData (extraction_status = "success")
+    else missing or unparseable
+        Ext-->>API: InvoiceData (extraction_status = "failed")
+    end
+    deactivate Ext
+
+    API->>DB: INSERT INTO invoices (always stored, even on failure)
+    DB-->>API: ok
+    API-->>IOS: {status: "SMS processed", extraction_status, data}
+    deactivate API
 ```
 
-**Response:**
-```json
-{
-  "status": "SMS processed",
-  "extraction_status": "success",
-  "data": {
-    "raw_invoice": "...",
-    "amount": 50.0,
-    "merchant": "Al Nahdi",
-    "extraction_status": "success",
-    "classification": "Expense",
-    "main_category": "Health",
-    "sub_category": "Pharmacy"
-  }
-}
+### Business logic: ingestion + learning loop
+
+```mermaid
+flowchart TD
+    A[Bank SMS arrives<br/>POST /sms] --> B{Has 'مبلغ' AND 'لدى'?}
+    B -- No --> F[Save invoice<br/>extraction_status = failed]
+    B -- Yes --> C{Amount parses as float?}
+    C -- No --> F
+    C -- Yes --> D[Load user's category rules]
+    D --> E{Any rule keyword<br/>found in merchant?}
+    E -- Yes --> G[First matching rule wins<br/>classification + main + sub category]
+    E -- No --> H[Uncategorized]
+    G --> I[Save invoice: success]
+    H --> I
+    F --> I
+    I --> J{User reacts?}
+    J -- "Add rule: POST /rules" --> K[New rule applies to future SMS]
+    J -- "PATCH /invoices/id" --> L[Manual override on one invoice]
+    J -- "POST /invoices/categorize" --> M[Re-run rules over ALL invoices]
 ```
 
----
+### Budget & cycle logic
 
-### Invoices
-
-#### `GET /invoices`
-Retrieve all invoices with optional pagination.
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `skip` | int | 0 | Number of records to skip |
-| `limit` | int | 100 | Max records to return |
-
-#### `GET /invoices/{invoice_id}`
-Get a specific invoice by ID.
-
-#### `PATCH /invoices/{invoice_id}`
-Update an invoice's classification.
-
-**Request:**
-```json
-{
-  "classification": "Expense",
-  "main_category": "Food",
-  "sub_category": "Restaurants"
-}
+```mermaid
+flowchart TD
+    R[Category rules carry limits<br/>category_limit per main_category] --> T[Total budget = SUM of all limits]
+    T --> L[Remaining = limit − spent in category<br/>only extraction_status = success counts]
+    C[One active cycle per user] --> S[Start new cycle]
+    S --> D{Same start_date as active cycle?}
+    D -- Yes --> E[Rejected: duplicate]
+    D -- No --> N[End old cycle, create new<br/>end_date optional → default 30 days]
+    N --> P{Pace check per cycle}
+    P --> P1[consumed% = spent / limit]
+    P --> P2[time% = elapsed_days / cycle_days]
+    P1 --> B{consumed% − time%}
+    P2 --> B
+    B -- "diff > +10" --> A1[ahead = spending faster than time → risk]
+    B -- "diff < −10" --> A2[behind = comfortably under pace]
+    B -- "within ±10" --> A3[on_track]
 ```
 
----
+### The rules in short
 
-### Category Rules
+1. **Nothing is ever dropped.** Failed extractions are stored with the raw SMS — they become the learning signal.
+2. **Only successful extractions count as spending.** Every aggregate filters on `extraction_status == "success"`.
+3. **Classification is order-dependent, first-match-wins**, with substring keyword matching. No match → uncategorized (a first-class bucket in the analysis).
+4. **The learning loop is manual-triggered:** new rules apply to future SMS automatically; existing invoices need `POST /invoices/categorize` or a manual patch.
+5. **Limits live on the rules** — total budget is `SUM(category_limit)` across your rules.
+6. **One active cycle per user**; starting a new one ends the old one (same-start-date is rejected), default 30 days.
+7. **Pace is a ±10pp tolerance band** between budget consumed % and time elapsed %.
+8. **Multi-tenant by construction:** every query is filtered by `user_id`; the API key path exists so the iOS Shortcut can push without a browser session.
 
-#### `POST /rules`
-Create a new classification rule.
+## Key endpoints
 
-**Request:**
-```json
-{
-  "merchant_keywords": "Starbucks",
-  "classification": "Expense",
-  "main_category": "Food",
-  "sub_category": "Coffee",
-  "category_limit": 500.0
-}
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/sms` | Ingest a bank SMS |
+| `GET` | `/invoices` | List invoices (filter: search, category, min/max amount) |
+| `PATCH` | `/invoices/{id}` | Manually re-categorize an invoice |
+| `POST` | `/invoices/categorize` | Re-run rules over all invoices |
+| `POST/GET/PATCH/DELETE` | `/rules` | Manage keyword classification rules |
+| `GET` | `/categories/{cat}/remaining-limit` | Limit vs. spent for a category |
+| `POST` | `/cycles/start` · `/cycles/end` | Manage the active budget cycle |
+| `GET` | `/cycles/{id}/analysis` | Cycle totals, category breakdown, pace, top merchants |
+| `GET` | `/cycles/{id}/spending-timeline` | Daily spend (zero-filled) |
+| `POST` | `/auth/login` · `/auth/register` | Web login (JWT) |
+| `POST/DELETE` | `/api-keys` | Create / revoke the API key for the iOS Shortcut |
+
+## Project layout
+
+```
+main.py           # All API routes + SMS extraction/classification logic
+models.py         # SQLAlchemy models (User, APIKey, Invoice, CategoryRule, BudgetCycle)
+schema.py         # Pydantic request/response schemas
+user_session.py   # Auth: register, login, JWT
+app/deps.py       # Auth dependency: API key first, JWT fallback
+seed_db.py        # Initial data
+frontend/my-app/  # Next.js app (terminal UI, rules, categories)
 ```
 
-#### `GET /rules`
-Retrieve all classification rules.
-
-#### `GET /rules/{rule_id}`
-Get a specific rule by ID.
-
-#### `PATCH /rules/{rule_id}`
-Update an existing rule.
-
-**Request:**
-```json
-{
-  "merchant_keywords": "Starbucks",
-  "classification": "Expense",
-  "main_category": "Food",
-  "sub_category": "Coffee",
-  "category_limit": 600.0
-}
-```
-
-#### `DELETE /rules/{rule_id}`
-Delete a rule by ID.
-
----
-
-### Categories & Budgets
-
-#### `GET /categories`
-Get all distinct main categories from rules.
-
-**Response:**
-```json
-["Food", "Health", "Transport", "Entertainment"]
-```
-
-#### `GET /categories/{category}/limit`
-Get the spending limit for a category.
-
-**Response:**
-```json
-{
-  "main_category": "Food",
-  "category_limit": 2000.0
-}
-```
-
-#### `GET /categories/{category}/remaining-limit`
-Get budget status including spent amount and remaining limit.
-
-**Response:**
-```json
-{
-  "main_category": "Food",
-  "category_limit": 2000.0,
-  "total_spent": 750.0,
-  "remaining_limit": 1250.0
-}
-```
-
----
-
-
----
-
-## 🎨 UI Theme
-(built with claude opus 4.5)
-The frontend features a **dark 80's financial terminal** aesthetic:
-- Deep black backgrounds with neon cyan, magenta, and green accents
-- Scanline overlay effect
-- Glowing text and borders
-- Monospace typography
-- Grid background pattern
-
----
-
-## 📝 License
+## License
 
 MIT
