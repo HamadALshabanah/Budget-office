@@ -1,6 +1,6 @@
 # Budget Office
 
-A personal finance terminal that turns bank SMS notifications into a
+A personal finance platform that turns bank SMS notifications into a
 categorized, budget-tracked ledger.
 
 Built with **FastAPI + SQLite** (backend) and **Next.js** (frontend).
@@ -184,7 +184,6 @@ schema.py         # Pydantic request/response schemas
 user_session.py   # Auth: register, login, JWT
 app/deps.py       # Auth dependency: API key first, JWT fallback
 seed_db.py        # Initial data
-frontend/my-app/  # Next.js app (terminal UI, rules, categories)
 ```
 
 ## License
