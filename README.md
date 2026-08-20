@@ -1,10 +1,7 @@
 # Budget Office
 currently the architecture is a flat monolith mid-refactor toward a modular monolith
 
-A personal finance platform that turns bank SMS notifications into a
-categorized, budget-tracked ledger.
-
-Built with **FastAPI + SQLite** (backend) and **Next.js** (frontend).
+Budget Office is a personal expense tracker for bank SMS. The core idea: paste a raw SMS and the system extracts the merchant and amount, classifies it against your own rules, and tracks spending against category limits inside budget cycles
 
 ## What it does
 
