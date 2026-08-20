@@ -1,4 +1,5 @@
 # Budget Office
+currently the architecture is a flat monolith mid-refactor toward a modular monolith
 
 A personal finance platform that turns bank SMS notifications into a
 categorized, budget-tracked ledger.
