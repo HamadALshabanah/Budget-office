@@ -2,7 +2,7 @@ from app.db import Base
 import os
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, String, func, create_engine
+from sqlalchemy import String, func, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 class User(Base):

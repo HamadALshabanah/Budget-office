@@ -29,3 +29,11 @@ class CategoryRuleReq(BaseModel):
     main_category: str = Field(..., description="Main function (e.g., 'Health')")
     sub_category: str = Field(..., description="Specific industry (e.g., 'Pharmacy')")
     category_limit: Optional[float] = Field(None, description="Optional spending limit for this category")
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
