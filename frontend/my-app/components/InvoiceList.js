@@ -441,6 +441,7 @@ export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId 
                   rows={2}
                   placeholder={isRTL ? 'أضف ملاحظة...' : 'Add a note...'}
                 />
+              </div>
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => setEditingInvoice(null)} className="btn-secondary flex-1 py-2 text-xs">
                   {t('cancel')}
