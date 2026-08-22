@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 
 from .routes import invoices, sms, rules, cycles, categories, auth,analytics
+from .db import init_db
+init_db()
 app = FastAPI()
 
 app.add_middleware(
