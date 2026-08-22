@@ -68,107 +68,134 @@ def main():
                 con.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
                 print(f"added {name} to {table}")
 
-    # which legacy flat columns does this DB have?
-    inv_cols = {r[1] for r in con.execute("PRAGMA table_info(invoices)")}
-    if not {"classification", "main_category"} <= inv_cols:
+    # which legacy flat columns does each table have? vintages can differ per table
+    def cols_of(table):
+        return {r[1] for r in con.execute(f"PRAGMA table_info({table})")}
+
+    inv_cols = cols_of("invoices")
+    rule_cols = cols_of("category_rules")
+
+    inv_flat = {"classification", "main_category"} <= inv_cols
+    rule_flat = {"classification", "main_category"} <= rule_cols
+
+    if not inv_flat and not rule_flat:
         # fresh DB or already-migrated: nothing flat to convert
         con.commit()
         print("no legacy flat category columns found - tree seeding skipped")
         print("done.")
         return
+    if not rule_flat:
+        print("note: category_rules has no flat category columns - rules won't be auto-linked")
 
-    # 2. seed the tree from distinct trimmed strings
-    roots: dict[tuple[int, str], int] = {}     # (user_id, classification) -> id
+    # 2. seed the tree from distinct trimmed strings, per available source
+    roots: dict[tuple[int, str], int] = {}       # (user_id, classification) -> id
     mains: dict[tuple[int, str, str], int] = {}  # (user_id, classification, main) -> id
 
-    for (user_id, cls) in con.execute(
-        "SELECT DISTINCT user_id, TRIM(classification) FROM invoices "
-        "WHERE TRIM(classification) != '' "
-        "UNION SELECT DISTINCT user_id, TRIM(classification) FROM category_rules "
-        "WHERE TRIM(classification) != ''"
-    ):
-        roots[(user_id, cls)] = get_or_create(con, user_id, None, cls, 0)
+    flat_tables = [t for t, ok in (("invoices", inv_flat), ("category_rules", rule_flat)) if ok]
+    sub_tables = [t for t in ("invoices", "category_rules")
+                  if (inv_cols if t == "invoices" else rule_cols).issuperset({"sub_category"})]
 
-    for (user_id, cls, mc) in con.execute(
-        "SELECT DISTINCT user_id, TRIM(classification), TRIM(main_category) FROM invoices "
-        "WHERE TRIM(COALESCE(classification,'')) != '' AND TRIM(COALESCE(main_category,'')) != '' "
-        "UNION SELECT DISTINCT user_id, TRIM(classification), TRIM(main_category) FROM category_rules "
-        "WHERE TRIM(COALESCE(classification,'')) != '' AND TRIM(COALESCE(main_category,'')) != ''"
-    ):
-        mains[(user_id, cls, mc)] = get_or_create(con, user_id, roots[(user_id, cls)], mc, 1)
+    for t in flat_tables:
+        for (user_id, cls) in con.execute(
+            f"SELECT DISTINCT user_id, TRIM(classification) FROM {t} "
+            "WHERE TRIM(COALESCE(classification,'')) != ''"
+        ):
+            if (user_id, cls) not in roots:
+                roots[(user_id, cls)] = get_or_create(con, user_id, None, cls, 0)
+
+    for t in flat_tables:
+        for (user_id, cls, mc) in con.execute(
+            f"SELECT DISTINCT user_id, TRIM(classification), TRIM(main_category) FROM {t} "
+            "WHERE TRIM(COALESCE(classification,'')) != '' AND TRIM(COALESCE(main_category,'')) != ''"
+        ):
+            if (user_id, cls, mc) not in mains:
+                mains[(user_id, cls, mc)] = get_or_create(con, user_id, roots[(user_id, cls)], mc, 1)
 
     subs = 0
-    for (user_id, cls, mc, sc) in con.execute(
-        "SELECT DISTINCT user_id, TRIM(classification), TRIM(main_category), TRIM(sub_category) "
-        "FROM invoices WHERE TRIM(COALESCE(sub_category,'')) != '' "
-        "UNION SELECT DISTINCT user_id, TRIM(classification), TRIM(main_category), TRIM(sub_category) "
-        "FROM category_rules WHERE TRIM(COALESCE(sub_category,'')) != ''"
-    ):
-        if (user_id, cls, mc) not in mains:
-            print(f"skipping dirty row: user {user_id} has sub '{sc}' without main '{mc}'")
-            continue
-        get_or_create(con, user_id, mains[(user_id, cls, mc)], sc, 2)
-        subs += 1
+    for t in sub_tables:
+        for (user_id, cls, mc, sc) in con.execute(
+            f"SELECT DISTINCT user_id, TRIM(classification), TRIM(main_category), TRIM(sub_category) FROM {t} "
+            "WHERE TRIM(COALESCE(sub_category,'')) != ''"
+        ):
+            if (user_id, cls, mc) not in mains:
+                print(f"skipping dirty row in {t}: user {user_id} has sub '{sc}' without main '{mc}'")
+                continue
+            get_or_create(con, user_id, mains[(user_id, cls, mc)], sc, 2)
+            subs += 1
 
     n_nodes = con.execute("SELECT COUNT(*) FROM categories").fetchone()[0]
     print(f"seeded tree: {len(roots)} root(s), {len(mains)} main(s), {subs} sub(s) = {n_nodes} nodes")
 
     # 3+4. backfill FKs ('' or NULL sub -> attach to the main node; all-NULL rows stay NULL)
     def resolve(user_id, cls, mc, sc):
-        if not cls or not mc:
+        if not cls or not mc or (user_id, cls, mc) not in mains:
             return None
-        main_id = mains[(user_id, cls, mc)]
         if not sc:
-            return main_id
+            return mains[(user_id, cls, mc)]
         row = con.execute(
             "SELECT id FROM categories WHERE parent_id = ? AND name = ?",
-            (main_id, sc),
+            (mains[(user_id, cls, mc)], sc),
         ).fetchone()
         return row[0] if row else None
 
     inv_filled = rule_filled = 0
-    for (rid, user_id, cls, mc, sc) in con.execute(
-        "SELECT id, user_id, TRIM(COALESCE(classification,'')), "
-        "TRIM(COALESCE(main_category,'')), TRIM(COALESCE(sub_category,'')) FROM invoices"
-    ):
-        cid = resolve(user_id, cls, mc, sc)
-        if cid:
-            con.execute("UPDATE invoices SET category_id = ? WHERE id = ?", (cid, rid))
-            inv_filled += 1
+    if inv_flat:
+        sub_expr = "TRIM(COALESCE(sub_category,''))" if "sub_category" in inv_cols else "''"
+        for (rid, user_id, cls, mc, sc) in con.execute(
+            f"SELECT id, user_id, TRIM(COALESCE(classification,'')), "
+            f"TRIM(COALESCE(main_category,'')), {sub_expr} FROM invoices"
+        ):
+            cid = resolve(user_id, cls, mc, sc)
+            if cid:
+                con.execute("UPDATE invoices SET category_id = ? WHERE id = ?", (cid, rid))
+                inv_filled += 1
 
-    for (rid, user_id, cls, mc, sc) in con.execute(
-        "SELECT id, user_id, TRIM(classification), "
-        "TRIM(COALESCE(main_category,'')), TRIM(COALESCE(sub_category,'')) FROM category_rules"
-    ):
-        cid = resolve(user_id, cls, mc, sc)
-        if cid:
-            con.execute("UPDATE category_rules SET category_id = ? WHERE id = ?", (cid, rid))
-            rule_filled += 1
+    if rule_flat:
+        sub_expr = "TRIM(COALESCE(sub_category,''))" if "sub_category" in rule_cols else "''"
+        for (rid, user_id, cls, mc, sc) in con.execute(
+            f"SELECT id, user_id, TRIM(classification), "
+            f"TRIM(COALESCE(main_category,'')), {sub_expr} FROM category_rules"
+        ):
+            cid = resolve(user_id, cls, mc, sc)
+            if cid:
+                con.execute("UPDATE category_rules SET category_id = ? WHERE id = ?", (cid, rid))
+                rule_filled += 1
 
     con.commit()
     print(f"backfilled: {inv_filled} invoices, {rule_filled} rules")
 
     # 5. verify before any destructive step
-    expected_inv = con.execute(
-        "SELECT COUNT(*) FROM invoices WHERE TRIM(COALESCE(classification,'')) != '' "
-        "AND TRIM(COALESCE(main_category,'')) != ''"
-    ).fetchone()[0]
-    assert inv_filled == expected_inv, f"invoice mismatch: {inv_filled} != {expected_inv}"
-    assert rule_filled == con.execute("SELECT COUNT(*) FROM category_rules").fetchone()[0]
-    orphans = con.execute(
-        "SELECT COUNT(*) FROM invoices WHERE category_id IS NULL "
-        "AND TRIM(COALESCE(main_category,'')) != ''"
-    ).fetchone()[0]
-    assert orphans == 0, f"{orphans} rows left uncategorized despite having strings"
+    if inv_flat:
+        expected_inv = con.execute(
+            "SELECT COUNT(*) FROM invoices WHERE TRIM(COALESCE(classification,'')) != '' "
+            "AND TRIM(COALESCE(main_category,'')) != ''"
+        ).fetchone()[0]
+        assert inv_filled == expected_inv, f"invoice mismatch: {inv_filled} != {expected_inv}"
+        orphans = con.execute(
+            "SELECT COUNT(*) FROM invoices WHERE category_id IS NULL "
+            "AND TRIM(COALESCE(main_category,'')) != ''"
+        ).fetchone()[0]
+        assert orphans == 0, f"{orphans} rows left uncategorized despite having strings"
+    if rule_flat:
+        expected_rules = con.execute(
+            "SELECT COUNT(*) FROM category_rules WHERE TRIM(COALESCE(classification,'')) != '' "
+            "AND TRIM(COALESCE(main_category,'')) != ''"
+        ).fetchone()[0]
+        assert rule_filled == expected_rules, f"rule mismatch: {rule_filled} != {expected_rules}"
     print("verify: OK (every categorized row points at a real node)")
 
-    # 6. drop old columns
+    # 6. drop old columns (only ones this DB actually has)
     drops = [
-        ("invoices", "main_category"), ("invoices", "sub_category"),
-        ("category_rules", "main_category"), ("category_rules", "sub_category"),
+        (t, c)
+        for t, cols in (("invoices", inv_cols), ("category_rules", rule_cols))
+        for c in ("main_category", "sub_category") if c in cols
     ]
     if drop_classification:
-        drops += [("invoices", "classification"), ("category_rules", "classification")]
+        drops += [
+            (t, "classification")
+            for t, cols in (("invoices", inv_cols), ("category_rules", rule_cols))
+            if "classification" in cols
+        ]
 
     version = tuple(int(x) for x in sqlite3.sqlite_version.split(".")[:2])
     if version < (3, 35):
