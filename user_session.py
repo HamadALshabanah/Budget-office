@@ -63,6 +63,7 @@ def register(req: RegisterRequest, db=Depends(get_db_session)):
 @router.post("/login")
 def login(req: LoginRequest, db=Depends(get_db_session)):
     try:
+        print(f"req Hello")
         user = db.query(User).filter(User.username == req.username).first()
         print(f"req {req}")
         if not user or not bcrypt.checkpw(req.password.encode("utf-8"), user.password_hash.encode("utf-8")):

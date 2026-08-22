@@ -1,8 +1,8 @@
 # Budget Office
 currently the architecture is a flat monolith mid-refactor toward a modular monolith
 
-Budget Office is a personal expense tracker for bank SMS. The core idea: paste a raw SMS and the system extracts the merchant and amount, classifies it against your own rules, and tracks spending against category limits inside budget cycles
-
+Budget Office is a personal expense tracker for bank SMS
+The core idea: paste or get a raw SMS HTTP request and the system extracts the merchant and amount, classifies it against your own rules, and tracks spending against category limits inside budget cycles
 ## What it does
 
 - Ingests Arabic bank SMS (pushed from an iOS Shortcut or typed in the web app)

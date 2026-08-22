@@ -4,7 +4,8 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List,Dict,Optional
-from models import APIKey, insert_invoice, init_db, SessionLocal, CategoryRule, Invoice, BudgetCycle, TransferLimitReq
+from app.db import init_db
+from models import APIKey, insert_invoice, SessionLocal, CategoryRule, Invoice, BudgetCycle, TransferLimitReq
 from sqlalchemy import func
 from datetime import datetime, timedelta
 from schema import InvoiceReq, InvoiceData, CategoryRuleReq, UpdateInvoiceReq

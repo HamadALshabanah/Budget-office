@@ -4,7 +4,7 @@ from app.deps import get_current_user_or_apikey
 from app.db import SessionLocal
 from app.models.Cycle import Cycle as BudgetCycle
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/cycles", tags=["cycles"])
 
@@ -94,3 +94,125 @@ def end_current_cycle(current_user = Depends(get_current_user_or_apikey)):
     db.close()
     
     return {"status": "success", "message": "Current budget cycle ended"}
+
+
+@router.get("/cycles/{cycle_id}/top-categories")
+def cycle_top_categories(cycle_id: int, current_user = Depends(get_current_user_or_apikey)):
+    """Ranked spending by main category for a cycle, with sub-category breakdown."""
+    db = SessionLocal()
+    try:
+        cycle = db.query(BudgetCycle).filter(
+            BudgetCycle.id == cycle_id, BudgetCycle.user_id == current_user.id
+        ).first()
+        if not cycle:
+            raise HTTPException(status_code=404, detail="Cycle not found")
+
+        end = cycle.end_date or datetime.now()
+        invoices = db.query(Invoice).filter(
+            Invoice.created_at >= cycle.start_date,
+            Invoice.created_at <= end,
+            Invoice.extraction_status == "success",
+            Invoice.user_id == current_user.id
+        ).all()
+
+        total_spent = sum((inv.amount or 0) for inv in invoices)
+
+        # Uncategorized spend so parts sum to the whole
+        uncategorized = sum((inv.amount or 0) for inv in invoices if not inv.main_category)
+        uncategorized_count = sum(1 for inv in invoices if not inv.main_category)
+
+        # Aggregate per main category and sub category
+        main_agg = {}  # cat -> {"spent": float, "count": int}
+        sub_agg = {}   # cat -> {sub: {"spent": float, "count": int}}
+        for inv in invoices:
+            cat = inv.main_category
+            if not cat:
+                continue
+            amount = inv.amount or 0
+            entry = main_agg.setdefault(cat, {"spent": 0.0, "count": 0})
+            entry["spent"] += amount
+            entry["count"] += 1
+
+            sub = inv.sub_category or "Uncategorized"
+            subs = sub_agg.setdefault(cat, {})
+            sub_entry = subs.setdefault(sub, {"spent": 0.0, "count": 0})
+            sub_entry["spent"] += amount
+            sub_entry["count"] += 1
+
+        categories = []
+        for cat, agg in sorted(main_agg.items(), key=lambda x: x[1]["spent"], reverse=True):
+            sub_categories = [
+                {"name": sub, "spent": round(s["spent"], 2), "count": s["count"]}
+                for sub, s in sorted(sub_agg.get(cat, {}).items(), key=lambda x: x[1]["spent"], reverse=True)
+            ]
+            categories.routerend({
+                "category": cat,
+                "spent": round(agg["spent"], 2),
+                "count": agg["count"],
+                "percentage_of_total": round((agg["spent"] / total_spent * 100), 1) if total_spent > 0 else 0,
+                "sub_categories": sub_categories,
+            })
+
+        if uncategorized > 0.005:
+            categories.routerend({
+                "category": "Uncategorized",
+                "spent": round(uncategorized, 2),
+                "count": uncategorized_count,
+                "percentage_of_total": round((uncategorized / total_spent * 100), 1) if total_spent > 0 else 0,
+                "sub_categories": [],
+            })
+
+        return {
+            "cycle_id": cycle.id,
+            "total_spent": round(total_spent, 2),
+            "categories": categories,
+        }
+    finally:
+        db.close()
+
+@router.get("/cycles/{cycle_id}/spending-timeline")
+def cycle_spending_timeline(cycle_id: int, current_user = Depends(get_current_user_or_apikey)):
+    """Get daily spending data for a cycle, filling in zero-spend days"""
+    db = SessionLocal()
+    try:
+        cycle = db.query(BudgetCycle).filter(
+            BudgetCycle.id == cycle_id, BudgetCycle.user_id == current_user.id
+        ).first()
+        if not cycle:
+            return {"data": []}
+
+        end = cycle.end_date or datetime.now()
+        start = cycle.start_date.replace(tzinfo=None)
+        end_clean = end.replace(tzinfo=None) if hasattr(end, 'replace') else end
+
+        # Query daily totals
+        daily = db.query(
+            func.date(Invoice.created_at).label("day"),
+            func.sum(Invoice.amount).label("spent"),
+            func.count(Invoice.id).label("count")
+        ).filter(
+            Invoice.created_at >= cycle.start_date,
+            Invoice.created_at <= end,
+            Invoice.extraction_status == "success",
+            Invoice.user_id == current_user.id
+        ).group_by(func.date(Invoice.created_at)).all()
+
+        # Build lookup
+        daily_map = {}
+        for row in daily:
+            daily_map[str(row.day)] = {"spent": round(row.spent or 0, 2), "count": row.count}
+
+        # Fill all days in range
+        data = []
+        current = start.date() if hasattr(start, 'date') else start
+        end_date = end_clean.date() if hasattr(end_clean, 'date') else end_clean
+        while current <= end_date:
+            key = str(current)
+            entry = daily_map.get(key, {"spent": 0, "count": 0})
+            data.routerend({"date": key, "spent": entry["spent"], "count": entry["count"]})
+            current += timedelta(days=1)
+
+        return {"data": data}
+    finally:
+        db.close()
+
