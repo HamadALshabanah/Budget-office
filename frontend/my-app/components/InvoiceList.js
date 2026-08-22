@@ -106,7 +106,8 @@ export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId 
     try {
       await updateInvoice(editingInvoice.id, {
         classification: editingInvoice.classification || '',
-        category_id: editingInvoice.category_id
+        category_id: editingInvoice.category_id,
+        note: editingInvoice.note || null,
       });
       setEditingInvoice(null);
       loadInvoices();
@@ -304,6 +305,11 @@ export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId 
                       {invoice.classification}
                     </p>
                   )}
+                  {invoice.note && (
+                    <p className="text-[9px] ml-7 mt-0.5 truncate italic" style={{ color: 'var(--text-tertiary)' }}>
+                      📝 {invoice.note}
+                    </p>
+                  )}
                 </div>
 
                 {/* Category */}
@@ -426,6 +432,15 @@ export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId 
                   placeholder={t('classificationPlaceholder')}
                 />
               </div>
+              <div>
+                <label className="block text-[9px] font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{isRTL ? 'ملاحظة' : 'Note'}</label>
+                <textarea
+                  value={editingInvoice.note || ''}
+                  onChange={e => setEditingInvoice({ ...editingInvoice, note: e.target.value })}
+                  className="input-field w-full p-2 text-sm resize-none"
+                  rows={2}
+                  placeholder={isRTL ? 'أضف ملاحظة...' : 'Add a note...'}
+                />
               <div className="flex gap-2 pt-1">
                 <button type="button" onClick={() => setEditingInvoice(null)} className="btn-secondary flex-1 py-2 text-xs">
                   {t('cancel')}

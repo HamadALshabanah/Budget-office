@@ -193,6 +193,7 @@ def get_cycle_invoices(cycle_id: int, current_user=Depends(get_current_user_or_a
             "merchant": inv.merchant,
             "category_id": inv.category_id,
             "classification": inv.classification,
+            "note": inv.note,
             "extraction_status": inv.extraction_status,
             "created_at": inv.created_at.isoformat() if inv.created_at else None,
         }

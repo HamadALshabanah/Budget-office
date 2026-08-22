@@ -57,6 +57,8 @@ def update_invoice(invoice_id:int, req: UpdateInvoiceReq,current_user = Depends(
     
     invoice.classification = req.classification
     invoice.category_id = req.category_id
+    if req.note is not None:
+        invoice.note = req.note
     db.commit()
     db.close()
     return {"status": f"Invoice {invoice_id} updated successfully"}

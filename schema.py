@@ -9,6 +9,7 @@ class InvoiceReq(BaseModel):
 class UpdateInvoiceReq(BaseModel):
     classification: Optional[str] = None
     category_id: Optional[int] = None
+    note: Optional[str] = None
     create_rule: bool = False # Checkbox in UI
 
 
