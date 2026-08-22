@@ -51,12 +51,31 @@ def main():
 
     con = sqlite3.connect(DB)
 
-    # 1b. create_all never alters existing tables - add the FK columns ourselves
-    for table in ("invoices", "category_rules"):
+    # 1b. create_all never alters existing tables - sync any missing columns ourselves
+    wanted = {
+        "invoices": [
+            ("category_id", "INTEGER REFERENCES categories(id)"),
+            ("note", "TEXT"),
+        ],
+        "category_rules": [
+            ("category_id", "INTEGER REFERENCES categories(id)"),
+        ],
+    }
+    for table, cols_wanted in wanted.items():
         cols = {r[1] for r in con.execute(f"PRAGMA table_info({table})")}
-        if "category_id" not in cols:
-            con.execute(f"ALTER TABLE {table} ADD COLUMN category_id INTEGER REFERENCES categories(id)")
-            print(f"added category_id to {table}")
+        for name, decl in cols_wanted:
+            if name not in cols:
+                con.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+                print(f"added {name} to {table}")
+
+    # which legacy flat columns does this DB have?
+    inv_cols = {r[1] for r in con.execute("PRAGMA table_info(invoices)")}
+    if not {"classification", "main_category"} <= inv_cols:
+        # fresh DB or already-migrated: nothing flat to convert
+        con.commit()
+        print("no legacy flat category columns found - tree seeding skipped")
+        print("done.")
+        return
 
     # 2. seed the tree from distinct trimmed strings
     roots: dict[tuple[int, str], int] = {}     # (user_id, classification) -> id
@@ -85,6 +104,9 @@ def main():
         "UNION SELECT DISTINCT user_id, TRIM(classification), TRIM(main_category), TRIM(sub_category) "
         "FROM category_rules WHERE TRIM(COALESCE(sub_category,'')) != ''"
     ):
+        if (user_id, cls, mc) not in mains:
+            print(f"skipping dirty row: user {user_id} has sub '{sc}' without main '{mc}'")
+            continue
         get_or_create(con, user_id, mains[(user_id, cls, mc)], sc, 2)
         subs += 1
 
