@@ -15,8 +15,8 @@ import sys
 from app.db import engine, Base
 import app.models.Category  # registers the categories table on Base metadata
 
-DB = "invoices.db"
-BACKUP = "invoices.db.bak"
+DB = os.environ.get("SQLITE_PATH", "invoices.db")  # honors the container's /data path
+BACKUP = DB + ".bak"
 
 
 def norm(v: str | None) -> str:
