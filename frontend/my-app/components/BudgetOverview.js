@@ -4,7 +4,7 @@ import { fetchCategories, fetchCategoryAnalysis, getCycleAnalysis, getCurrentCyc
 import { TrendingUp, X, Wallet, Receipt, Calculator, BarChart3 } from 'lucide-react';
 import { useLanguage } from '../lib/LanguageContext';
 
-function CategoryAnalysisModal({ category, onClose, cycleData }) {
+function CategoryAnalysisModal({ category, categoryId, onClose, cycleData }) {
     const { t } = useLanguage();
     const [analysis, setAnalysis] = useState(null);
     const [loading, setLoading] = useState(!cycleData);
@@ -22,9 +22,10 @@ function CategoryAnalysisModal({ category, onClose, cycleData }) {
             return;
         }
         const loadAnalysis = async () => {
+            if (!categoryId) return; // name-only context (cycle breakdown) — nothing to fetch
             setLoading(true);
             try {
-                const data = await fetchCategoryAnalysis(category);
+                const data = await fetchCategoryAnalysis(categoryId);
                 setAnalysis(data);
             } catch (err) {
                 console.error(err);
@@ -33,7 +34,7 @@ function CategoryAnalysisModal({ category, onClose, cycleData }) {
             }
         };
         loadAnalysis();
-    }, [category, cycleData]);
+    }, [categoryId, cycleData]);
 
     return (
         <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -164,8 +165,10 @@ function GaugeCard({ category, data, loading, onClick }) {
 
     if (!data) return null;
 
-    const percent = Math.min(100, Math.max(0, (data.total_spent / data.category_limit) * 100));
-    const isOverBudget = data.total_spent > data.category_limit;
+    const percent = data.category_limit
+        ? Math.min(100, Math.max(0, (data.total_spent / data.category_limit) * 100))
+        : 0;
+    const isOverBudget = data.category_limit != null && data.total_spent > data.category_limit;
     const isCaution = percent > 75 && !isOverBudget;
 
     const fillColor = isOverBudget
@@ -240,6 +243,7 @@ export default function BudgetOverview({ refreshTrigger, selectedCycleId }) {
     const [categories, setCategories] = useState([]);
     const [budgetData, setBudgetData] = useState({});
     const [cycleCategoryData, setCycleCategoryData] = useState({}); // keyed by category name
+    const [nameToId, setNameToId] = useState({}); // for all-time analysis fetches
     const [loading, setLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState(null);
 
@@ -266,15 +270,31 @@ export default function BudgetOverview({ refreshTrigger, selectedCycleId }) {
                     });
                     setBudgetData(data);
                     setCycleCategoryData(cycleData);
+                    setNameToId({});
                 } else {
                     // Current cycle — use getCycleAnalysis so numbers match the cycle, not all-time
                     const cycle = await getCurrentCycle();
-                    if (cycle.status === 'no_active_cycle') {
-                        // Fallback: show all categories with all-time limits but 0 spent
-                        const cats = await fetchCategories();
-                        setCategories(cats);
-                        setBudgetData({});
+                    if (!cycle || !cycle.id) {
+                        // Fallback: level-1 categories from the tree, limits but no cycle spend
+                        const tree = await fetchCategories();
+                        const data = {};
+                        const ids = {};
+                        const names = [];
+                        for (const root of (tree || [])) {
+                            for (const node of (root.children || [])) {
+                                names.push(node.name);
+                                ids[node.name] = node.id;
+                                data[node.name] = {
+                                    total_spent: 0,
+                                    category_limit: node.category_limit,
+                                    remaining_limit: node.category_limit,
+                                };
+                            }
+                        }
+                        setCategories(names);
+                        setBudgetData(data);
                         setCycleCategoryData({});
+                        setNameToId(ids);
                         return;
                     }
                     const analysis = await getCycleAnalysis(cycle.id);
@@ -293,6 +313,7 @@ export default function BudgetOverview({ refreshTrigger, selectedCycleId }) {
                     });
                     setBudgetData(data);
                     setCycleCategoryData(cycleData);
+                    setNameToId({});
                 }
             } catch (err) {
                 console.error(err);
@@ -344,6 +365,7 @@ export default function BudgetOverview({ refreshTrigger, selectedCycleId }) {
             {selectedCategory && (
                 <CategoryAnalysisModal
                     category={selectedCategory}
+                    categoryId={nameToId[selectedCategory]}
                     onClose={() => setSelectedCategory(null)}
                     cycleData={cycleCategoryData[selectedCategory] || null}
                 />

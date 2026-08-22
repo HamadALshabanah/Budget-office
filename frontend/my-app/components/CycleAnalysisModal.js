@@ -30,7 +30,7 @@ const translations = {
         transactions: "المعاملات",
         avgTransaction: "متوسط الفاتورة",
         budgetUsed: "الميزانية المستخدمة",
-        categoryBreakdown: "توزيع الفئات",
+        categoryBreakdown: "توزيع البنود",
         topMerchants: "أكثر التجار",
         ofLimit: "من الحد",
         ofTotal: "من الإجمالي",

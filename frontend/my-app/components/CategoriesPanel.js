@@ -25,7 +25,7 @@ export default function CategoriesPanel({ refreshTrigger, selectedCycleId }) {
                 let cycleId = selectedCycleId;
                 if (!cycleId) {
                     const cycle = await getCurrentCycle();
-                    if (cycle.status === 'no_active_cycle') { setData(null); return; }
+                    if (!cycle || !cycle.id) { setData(null); return; } // none active or endpoint error
                     cycleId = cycle.id;
                 }
                 const analysis = await getCycleAnalysis(cycleId);
@@ -141,7 +141,7 @@ export default function CategoriesPanel({ refreshTrigger, selectedCycleId }) {
             {/* Header with overall pace */}
             <div className="px-5 pt-4 pb-2 flex items-baseline justify-between">
                 <h3 className="text-[9px] font-medium uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                    {isRTL ? 'الفئات' : 'Categories'}
+                    {isRTL ? 'البنود' : 'Categories'}
                 </h3>
                 {data.overall_pace && (
                     <span

@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { Pencil, X, Save, FileText, Trash2, Search, SlidersHorizontal, ArrowDownLeft } from 'lucide-react';
 import { useLanguage } from '../lib/LanguageContext';
 import { updateInvoice, fetchCategories, deleteInvoice, fetchInvoices, getCurrentCycle, getCycleAnalysis, getCycleInvoices } from '../lib/api';
+import { flattenTree, shortPath, buildPathMap } from '../lib/categories';
+import CategorySelect from './CategorySelect';
 
 export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId }) {
   const { t, language } = useLanguage();
@@ -29,6 +31,10 @@ export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId 
     fetchCategories().then(setCategories).catch(console.error);
   }, []);
 
+  // Tree -> flat options + id->path lookup
+  const categoryOptions = flattenTree(categories);
+  const pathMap = buildPathMap(categories);
+
   // Fetch cycle budget for running balance
   useEffect(() => {
     const fetchBudget = async () => {
@@ -38,7 +44,7 @@ export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId 
           setCycleBudget(analysis.total_budget || 0);
         } else {
           const cycle = await getCurrentCycle();
-          if (cycle.status === 'no_active_cycle') { setCycleBudget(null); return; }
+          if (!cycle || !cycle.id) { setCycleBudget(null); return; }
           const analysis = await getCycleAnalysis(cycle.id);
           setCycleBudget(analysis.total_budget || 0);
         }
@@ -55,13 +61,13 @@ export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId 
         // Fetch all invoices for the selected cycle, then filter client-side
         data = await getCycleInvoices(selectedCycleId);
         if (debouncedSearch) data = data.filter(inv => inv.merchant?.toLowerCase().includes(debouncedSearch.toLowerCase()));
-        if (filterCategory) data = data.filter(inv => inv.main_category === filterCategory);
+        if (filterCategory) data = data.filter(inv => inv.category_id === Number(filterCategory));
         if (minAmount !== '') data = data.filter(inv => (inv.amount || 0) >= parseFloat(minAmount));
         if (maxAmount !== '') data = data.filter(inv => (inv.amount || 0) <= parseFloat(maxAmount));
       } else {
         data = await fetchInvoices({
           search: debouncedSearch || undefined,
-          category: filterCategory || undefined,
+          category_id: filterCategory || undefined,
           min_amount: minAmount || undefined,
           max_amount: maxAmount || undefined,
         });
@@ -91,10 +97,7 @@ export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId 
   const handleEdit = async (invoice) => {
     const cats = await fetchCategories();
     setCategories(cats);
-    setEditingInvoice({
-      ...invoice,
-      main_category: invoice.main_category || ''
-    });
+    setEditingInvoice({ ...invoice });
   };
 
   const handleUpdate = async (e) => {
@@ -103,8 +106,7 @@ export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId 
     try {
       await updateInvoice(editingInvoice.id, {
         classification: editingInvoice.classification || '',
-        main_category: editingInvoice.main_category,
-        sub_category: editingInvoice.sub_category || ''
+        category_id: editingInvoice.category_id
       });
       setEditingInvoice(null);
       loadInvoices();
@@ -189,9 +191,9 @@ export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId 
               onChange={(e) => setFilterCategory(e.target.value)}
               className="input-field flex-1 py-1.5 px-2.5 text-xs"
             >
-              <option value="">{isRTL ? 'كل الفئات' : 'All categories'}</option>
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+              <option value="">{isRTL ? 'كل البنود' : 'All categories'}</option>
+              {categoryOptions.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.path}</option>
               ))}
             </select>
             <input
@@ -306,12 +308,9 @@ export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId 
 
                 {/* Category */}
                 <div className="flex items-center">
-                  {invoice.main_category ? (
-                    <span className="badge badge-green text-[9px] whitespace-nowrap">
-                      {invoice.main_category}
-                      {invoice.sub_category && (
-                        <span style={{ color: 'var(--accent-mid)', opacity: 0.8 }}> / {invoice.sub_category}</span>
-                      )}
+                  {invoice.category_id && pathMap[invoice.category_id] ? (
+                    <span className="badge badge-green text-[9px] whitespace-nowrap" title={pathMap[invoice.category_id].path}>
+                      {shortPath(pathMap[invoice.category_id].path)}
                     </span>
                   ) : (
                     <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>—</span>
@@ -410,24 +409,12 @@ export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId 
             <form onSubmit={handleUpdate} className="space-y-3">
               <div>
                 <label className="block text-[9px] font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('categoryLabel')}</label>
-                <select
-                  value={editingInvoice.main_category}
-                  onChange={e => setEditingInvoice({ ...editingInvoice, main_category: e.target.value })}
-                  className="input-field w-full p-2 text-sm"
-                >
-                  <option value="">{t('selectCategory')}</option>
-                  {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[9px] font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('subCategoryLabel')}</label>
-                <input
-                  value={editingInvoice.sub_category || ''}
-                  onChange={e => setEditingInvoice({ ...editingInvoice, sub_category: e.target.value })}
-                  className="input-field w-full p-2 text-sm"
-                  placeholder={t('subCategoryPlaceholder')}
+                <CategorySelect
+                  tree={categories}
+                  value={editingInvoice.category_id}
+                  onChange={v => setEditingInvoice({ ...editingInvoice, category_id: v })}
+                  onTreeRefresh={() => fetchCategories().then(setCategories)}
+                  placeholder={t('selectCategory')}
                 />
               </div>
               <div>

@@ -45,10 +45,10 @@ export async function register(username, password) {
 
 // ── Invoice APIs ──────────────────────────────────────────────────────────────
 
-export async function fetchInvoices({ search, category, min_amount, max_amount } = {}) {
+export async function fetchInvoices({ search, category_id, min_amount, max_amount } = {}) {
   const params = new URLSearchParams();
   if (search) params.set('search', search);
-  if (category) params.set('category', category);
+  if (category_id) params.set('category_id', category_id);
   if (min_amount !== undefined && min_amount !== '') params.set('min_amount', min_amount);
   if (max_amount !== undefined && max_amount !== '') params.set('max_amount', max_amount);
   const qs = params.toString();
@@ -74,8 +74,35 @@ export async function fetchCategories() {
     return res.json();
 }
 
-export async function fetchCategoryRemaining(category) {
-    const res = await fetch(`${API_URL}/categories/${category}/remaining-limit`, {
+export async function addCategory(data) {
+    const res = await fetch(`${API_URL}/categories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to create category');
+    }
+    return res.json();
+}
+
+export async function updateCategory(categoryId, data) {
+    const res = await fetch(`${API_URL}/categories/${categoryId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to update category');
+    }
+    return res.json();
+}
+
+export async function deleteCategory(categoryId) {
+    const res = await fetch(`${API_URL}/categories/${categoryId}`, {
+        method: 'DELETE',
         headers: { ...getAuthHeader() },
     });
     return res.json();
@@ -123,8 +150,8 @@ export async function updateInvoice(invoiceId, data) {
     return res.json();
 }
 
-export async function fetchCategoryAnalysis(category) {
-    const res = await fetch(`${API_URL}/categories/${encodeURIComponent(category)}/analysis`, {
+export async function fetchCategoryAnalysis(categoryId) {
+    const res = await fetch(`${API_URL}/categories/${categoryId}/analysis`, {
         headers: { ...getAuthHeader() },
     });
     return res.json();
@@ -203,6 +230,21 @@ export async function deleteCycle(cycleId) {
         method: 'DELETE',
         headers: { ...getAuthHeader() },
     });
+    return res.json();
+}
+
+// ── Analytics ──────────────────────────────────────────────────────────────────
+
+export async function fetchAnalytics(cycleId, groupBy, scope) {
+    const params = new URLSearchParams({ cycle_id: cycleId, group_by: groupBy });
+    if (scope) params.set('scope', scope);
+    const res = await fetch(`${API_URL}/analytics/?${params.toString()}`, {
+        headers: { ...getAuthHeader() },
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to load analytics');
+    }
     return res.json();
 }
 

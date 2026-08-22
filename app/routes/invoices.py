@@ -4,21 +4,21 @@ from app.db import SessionLocal
 from app.models.Invoice import Invoice
 from typing import Optional
 
-from main import classify_sms
+from app.classify import classify_merchant
 from schema import UpdateInvoiceReq
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 @router.get("/")
-def get_invoices(skip: int = 0, limit: int = 100, search: Optional[str] = None, 
-                 category: Optional[str] = None, min_amount: Optional[float] = None, 
+def get_invoices(skip: int = 0, limit: int = 100, search: Optional[str] = None,
+                 category_id: Optional[int] = None, min_amount: Optional[float] = None,
                  max_amount: Optional[float] = None, current_user = Depends(get_current_user_or_apikey)):
     db = SessionLocal()
     query = db.query(Invoice).filter(Invoice.user_id == current_user.id)
 
     if search:
         query = query.filter(Invoice.merchant.ilike(f"%{search}%"))
-    if category:
-        query = query.filter(Invoice.main_category == category)
+    if category_id is not None:
+        query = query.filter(Invoice.category_id == category_id)
     if min_amount is not None:
         query = query.filter(Invoice.amount >= min_amount)
     if max_amount is not None:
@@ -44,8 +44,7 @@ def get_invoice(invoice_id:int, current_user = Depends(get_current_user_or_apike
         "raw_invoice": invoice.raw_invoice,
         "extraction_status": invoice.extraction_status,
         "classification": invoice.classification,
-        "main_category": invoice.main_category,
-        "sub_category": invoice.sub_category
+        "category_id": invoice.category_id
     }
 
 @router.patch("/{invoice_id}")
@@ -57,8 +56,7 @@ def update_invoice(invoice_id:int, req: UpdateInvoiceReq,current_user = Depends(
         return {"status": "Invoice not found"}
     
     invoice.classification = req.classification
-    invoice.main_category = req.main_category
-    invoice.sub_category = req.sub_category
+    invoice.category_id = req.category_id
     db.commit()
     db.close()
     return {"status": f"Invoice {invoice_id} updated successfully"}
@@ -81,13 +79,9 @@ def categorize_invoices(current_user = Depends(get_current_user_or_apikey)):
     invoices = db.query(Invoice).filter(Invoice.user_id == current_user.id).all()
     updated_count = 0
     for invoice in invoices:
-        classification, main_cat, sub_cat = classify_sms(invoice.merchant)
-        if (invoice.classification != classification or 
-            invoice.main_category != main_cat or 
-            invoice.sub_category != sub_cat):
-            invoice.classification = classification
-            invoice.main_category = main_cat
-            invoice.sub_category = sub_cat
+        cid = classify_merchant(invoice.merchant)
+        if invoice.category_id != cid:
+            invoice.category_id = cid
             updated_count += 1
     db.commit()
     db.close()

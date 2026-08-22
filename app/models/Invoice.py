@@ -15,7 +15,6 @@ class Invoice(Base):
     merchant: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     extraction_status: Mapped[str] = mapped_column(String, default="pending", nullable=False)
     classification: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    main_category: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    sub_category: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    category_id: Mapped[Optional[int]] = mapped_column(ForeignKey("categories.id"), nullable=True)
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

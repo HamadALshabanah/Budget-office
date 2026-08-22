@@ -1,90 +1,13 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Trash2, Save, ArrowRight, Pencil, X, Tag, RefreshCw, Check, Moon, Sun } from 'lucide-react';
-import { fetchRules, addRule, deleteRule, updateRule, categorizeInvoices, isAuthenticated } from '../../lib/api';
+import { fetchRules, addRule, deleteRule, updateRule, categorizeInvoices, isAuthenticated, fetchCategories } from '../../lib/api';
+import { buildPathMap } from '../../lib/categories';
+import CategorySelect from '../../components/CategorySelect';
+import KeywordsInput from '../../components/KeywordsInput';
 import { useLanguage } from '../../lib/LanguageContext';
-
-function KeywordsInput({ keywords, setKeywords, placeholder, hint }) {
-    const [inputValue, setInputValue] = useState('');
-    const inputRef = useRef(null);
-
-    const addKeyword = (keyword) => {
-        const trimmed = keyword.trim();
-        if (trimmed && !keywords.includes(trimmed)) {
-            setKeywords([...keywords, trimmed]);
-        }
-        setInputValue('');
-    };
-
-    const removeKeyword = (indexToRemove) => {
-        setKeywords(keywords.filter((_, index) => index !== indexToRemove));
-    };
-
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter' || e.key === ',') {
-            e.preventDefault();
-            addKeyword(inputValue);
-        } else if (e.key === 'Backspace' && inputValue === '' && keywords.length > 0) {
-            removeKeyword(keywords.length - 1);
-        }
-    };
-
-    const handlePaste = (e) => {
-        e.preventDefault();
-        const pastedText = e.clipboardData.getData('text');
-        const newKeywords = pastedText.split(/[,،\n]+/).map(k => k.trim()).filter(k => k);
-        const uniqueNew = newKeywords.filter(k => !keywords.includes(k));
-        if (uniqueNew.length > 0) {
-            setKeywords([...keywords, ...uniqueNew]);
-        }
-    };
-
-    return (
-        <div>
-            <div
-                className="min-h-16 p-2 input-field cursor-text"
-                onClick={() => inputRef.current?.focus()}
-            >
-                <div className="flex flex-wrap gap-1">
-                    {keywords.map((keyword, index) => (
-                        <span
-                            key={index}
-                            className="badge badge-green group inline-flex items-center gap-1"
-                        >
-                            <Tag className="w-2.5 h-2.5" />
-                            {keyword}
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeKeyword(index);
-                                }}
-                                className="ml-0.5 p-0.5 rounded transition-colors hover:bg-[rgba(255,255,255,0.1)]"
-                            >
-                                <X className="w-2.5 h-2.5" />
-                            </button>
-                        </span>
-                    ))}
-                    <input
-                        ref={inputRef}
-                        type="text"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        onPaste={handlePaste}
-                        onBlur={() => inputValue && addKeyword(inputValue)}
-                        className="flex-1 min-w-24 p-1 bg-transparent text-sm outline-none"
-                        style={{ color: 'var(--text-primary)' }}
-                        placeholder={keywords.length === 0 ? placeholder : ''}
-                    />
-                </div>
-            </div>
-            <p className="text-[9px] mt-1" style={{ color: 'var(--text-muted)' }}>{hint}</p>
-        </div>
-    );
-}
 
 export default function RulesPage() {
     const router = useRouter();
@@ -93,10 +16,10 @@ export default function RulesPage() {
     const [loading, setLoading] = useState(true);
 
     const [merchantKeywords, setMerchantKeywords] = useState([]);
-    const [classification, setClassification] = useState('');
-    const [mainCategory, setMainCategory] = useState('');
-    const [subCategory, setSubCategory] = useState('');
+    const [categoryId, setCategoryId] = useState(null);
     const [limit, setLimit] = useState('');
+    const [tree, setTree] = useState([]);
+    const [pathMap, setPathMap] = useState({});
 
     const [editingRule, setEditingRule] = useState(null);
     const [editKeywords, setEditKeywords] = useState([]);
@@ -110,6 +33,7 @@ export default function RulesPage() {
             return;
         }
         loadRules();
+        loadTree();
     }, []);
 
     const loadRules = async () => {
@@ -125,6 +49,16 @@ export default function RulesPage() {
         }
     };
 
+    const loadTree = async () => {
+        try {
+            const nodes = await fetchCategories();
+            setTree(Array.isArray(nodes) ? nodes : []);
+            setPathMap(buildPathMap(nodes));
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
     const parseKeywords = (keywordsStr) => {
         if (!keywordsStr) return [];
         return keywordsStr.split(',').map(k => k.trim()).filter(k => k);
@@ -132,20 +66,16 @@ export default function RulesPage() {
 
     const handleAddRule = async (e) => {
         e.preventDefault();
-        if (merchantKeywords.length === 0 || !mainCategory) return;
+        if (merchantKeywords.length === 0 || !categoryId) return;
 
         try {
             await addRule({
                 merchant_keywords: merchantKeywords.join(','),
-                classification: classification || 'Expense',
-                main_category: mainCategory,
-                sub_category: subCategory,
+                category_id: categoryId,
                 category_limit: limit ? parseFloat(limit) : null
             });
             setMerchantKeywords([]);
-            setClassification('');
-            setMainCategory('');
-            setSubCategory('');
+            setCategoryId(null);
             setLimit('');
             loadRules();
         } catch (err) {
@@ -174,13 +104,12 @@ export default function RulesPage() {
 
     const handleUpdateRule = async (e) => {
         e.preventDefault();
-        if (!editingRule || editKeywords.length === 0) return;
+        if (!editingRule || editKeywords.length === 0 || !editingRule.category_id) return;
         try {
             await updateRule(editingRule.id, {
                 merchant_keywords: editKeywords.join(','),
                 classification: editingRule.classification || 'Expense',
-                main_category: editingRule.main_category,
-                sub_category: editingRule.sub_category || '',
+                category_id: editingRule.category_id,
                 category_limit: editingRule.category_limit ? parseFloat(editingRule.category_limit) : null
             });
             setEditingRule(null);
@@ -266,32 +195,13 @@ export default function RulesPage() {
 
                                 <div>
                                     <label className="block text-[9px] font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('categoryLabel')}</label>
-                                    <input
-                                        value={mainCategory}
-                                        onChange={e => setMainCategory(e.target.value)}
-                                        className="input-field w-full p-2 text-sm"
-                                        placeholder={t('categoryPlaceholder')}
+                                    <CategorySelect
+                                        tree={tree}
+                                        value={categoryId}
+                                        onChange={setCategoryId}
+                                        onTreeRefresh={loadTree}
                                         required
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-[9px] font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('subCategoryLabel')}</label>
-                                    <input
-                                        value={subCategory}
-                                        onChange={e => setSubCategory(e.target.value)}
-                                        className="input-field w-full p-2 text-sm"
-                                        placeholder={t('subCategoryPlaceholder')}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-[9px] font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('classificationLabel')}</label>
-                                    <input
-                                        value={classification}
-                                        onChange={e => setClassification(e.target.value)}
-                                        className="input-field w-full p-2 text-sm"
-                                        placeholder={t('classificationPlaceholder')}
+                                        placeholder={t('selectCategory')}
                                     />
                                 </div>
 
@@ -344,9 +254,8 @@ export default function RulesPage() {
                                                     {parseKeywords(rule.merchant_keywords)[0] || '-'}
                                                 </div>
                                                 <div className="col-span-4 text-xs">
-                                                    <span className="badge badge-green">
-                                                        {rule.main_category}
-                                                        {rule.sub_category && ` / ${rule.sub_category}`}
+                                                    <span className="badge badge-green" title={pathMap[rule.category_id]?.path || ''}>
+                                                        {pathMap[rule.category_id]?.path || rule.category_id || '—'}
                                                     </span>
                                                 </div>
                                                 <div className="col-span-3 text-xs font-data" style={{ color: 'var(--amount)' }}>
@@ -412,29 +321,13 @@ export default function RulesPage() {
                                 </div>
                                 <div>
                                     <label className="block text-[9px] font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('categoryLabel')}</label>
-                                    <input
-                                        value={editingRule.main_category}
-                                        onChange={e => setEditingRule({...editingRule, main_category: e.target.value})}
-                                        className="input-field w-full p-2 text-sm"
+                                    <CategorySelect
+                                        tree={tree}
+                                        value={editingRule.category_id}
+                                        onChange={v => setEditingRule({ ...editingRule, category_id: v })}
+                                        onTreeRefresh={loadTree}
                                         required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[9px] font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('subCategoryLabel')}</label>
-                                    <input
-                                        value={editingRule.sub_category || ''}
-                                        onChange={e => setEditingRule({...editingRule, sub_category: e.target.value})}
-                                        className="input-field w-full p-2 text-sm"
-                                        placeholder={t('subCategoryPlaceholder')}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[9px] font-medium uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>{t('classificationLabel')}</label>
-                                    <input
-                                        value={editingRule.classification || ''}
-                                        onChange={e => setEditingRule({...editingRule, classification: e.target.value})}
-                                        className="input-field w-full p-2 text-sm"
-                                        placeholder={t('classificationPlaceholder')}
+                                        placeholder={t('selectCategory')}
                                     />
                                 </div>
                                 <div>

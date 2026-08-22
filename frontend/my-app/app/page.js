@@ -7,7 +7,8 @@ import BudgetCycle from '../components/BudgetCycle';
 import CycleSummary from '../components/CycleSummary';
 import CategoriesPanel from '../components/CategoriesPanel';
 import BudgetOverview from '../components/BudgetOverview';
-import { Settings, Globe, Activity, Moon, Sun, Plus, X, Key } from 'lucide-react';
+import DrillDown from '../components/DrillDown';
+import { Settings, Globe, Activity, Moon, Sun, Plus, X, Key, FolderTree } from 'lucide-react';
 import { useLanguage } from '../lib/LanguageContext';
 import { getCycleHistory, isAuthenticated, logout } from '../lib/api';
 import { useRouter } from 'next/navigation';
@@ -76,6 +77,10 @@ export default function Home() {
               <Globe className="w-3.5 h-3.5" />
               {language === 'en' ? 'AR' : 'EN'}
             </button>
+            <Link href="/categories" className="btn-secondary flex items-center gap-1.5 px-2.5 py-1.5 text-xs">
+              <FolderTree className="w-3.5 h-3.5" />
+              {t('manageCategories')}
+            </Link>
             <Link href="/rules" className="btn-secondary flex items-center gap-1.5 px-2.5 py-1.5 text-xs">
               <Settings className="w-3.5 h-3.5" />
               {t('manageRules')}
@@ -173,11 +178,13 @@ export default function Home() {
                 {isRTL ? 'تحليلات الإنفاق' : 'Spending Insights'}
               </h2>
               <p className="text-[10px] mt-0.5 font-data uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                {isRTL ? 'أعلى الفئات وميزانياتها' : 'Top categories and budgets'}
+                {isRTL ? 'أعلى البنود وميزانياتها' : 'Top categories and budgets'}
               </p>
             </div>
           </div>
           <div className="space-y-5">
+            <DrillDown refreshTrigger={refreshKey} selectedCycleId={selectedCycleId} />
+
             <BudgetOverview refreshTrigger={refreshKey} selectedCycleId={selectedCycleId} />
 
             <CategoriesPanel refreshTrigger={refreshKey} selectedCycleId={selectedCycleId} />
