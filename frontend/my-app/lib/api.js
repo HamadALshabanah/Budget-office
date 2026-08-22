@@ -52,14 +52,14 @@ export async function fetchInvoices({ search, category_id, min_amount, max_amoun
   if (min_amount !== undefined && min_amount !== '') params.set('min_amount', min_amount);
   if (max_amount !== undefined && max_amount !== '') params.set('max_amount', max_amount);
   const qs = params.toString();
-  const res = await fetch(`${API_URL}/invoices${qs ? '?' + qs : ''}`, {
+  const res = await fetch(`${API_URL}/invoices/${qs ? '?' + qs : ''}`, {
     headers: { ...getAuthHeader() },
   });
   return res.json();
 }
 
 export async function postSMS(message) {
-  const res = await fetch(`${API_URL}/sms`, {
+  const res = await fetch(`${API_URL}/sms/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
     body: JSON.stringify({ message }),
@@ -68,14 +68,14 @@ export async function postSMS(message) {
 }
 
 export async function fetchCategories() {
-    const res = await fetch(`${API_URL}/categories`, {
+    const res = await fetch(`${API_URL}/categories/`, {
         headers: { ...getAuthHeader() },
     });
     return res.json();
 }
 
 export async function addCategory(data) {
-    const res = await fetch(`${API_URL}/categories`, {
+    const res = await fetch(`${API_URL}/categories/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify(data),
@@ -109,14 +109,14 @@ export async function deleteCategory(categoryId) {
 }
 
 export async function fetchRules() {
-    const res = await fetch(`${API_URL}/rules`, {
+    const res = await fetch(`${API_URL}/rules/`, {
         headers: { ...getAuthHeader() },
     });
     return res.json();
 }
 
 export async function addRule(rule) {
-    const res = await fetch(`${API_URL}/rules`, {
+    const res = await fetch(`${API_URL}/rules/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify(rule),
