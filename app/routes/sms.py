@@ -31,7 +31,7 @@ def extract_amount(sms: str) -> dict:
     return data
 
 
-@router.post("/")
+@router.post("")
 async def receive_sms(req: InvoiceReq, current_user=Depends(get_current_user_or_apikey)):
     data = extract_amount(req.message)
     db = SessionLocal()
