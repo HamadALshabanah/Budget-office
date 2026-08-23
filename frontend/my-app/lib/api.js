@@ -59,7 +59,7 @@ export async function fetchInvoices({ search, category_id, min_amount, max_amoun
 }
 
 export async function postSMS(message) {
-  const res = await fetch(`${API_URL}/sms/`, {
+  const res = await fetch(`${API_URL}/sms`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
     body: JSON.stringify({ message }),
