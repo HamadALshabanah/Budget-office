@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { getCurrentCycle, startNewCycle, getCycleHistory, endCurrentCycle, deleteCycle } from '../lib/api';
 import { useLanguage } from '../lib/LanguageContext';
-import { Calendar, RefreshCw, History, X, ChevronDown, ChevronUp, BarChart3, Plus, Trash2 } from 'lucide-react';
+import { Calendar, RefreshCw, History, X, BarChart3, Plus, Trash2 } from 'lucide-react';
 import CycleAnalysisModal from './CycleAnalysisModal';
 
 const translations = {
@@ -251,15 +251,11 @@ export default function BudgetCycle({ onCycleChange }) {
                     <div className="flex gap-2">
                         {history.length > 0 && (
                             <button
-                                onClick={() => setShowHistory(!showHistory)}
-                                className="btn-secondary flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs"
+                                onClick={() => setShowHistory(true)}
+                                className="btn-secondary flex items-center justify-center w-8 h-8 p-0"
+                                title={t.history}
                             >
-                                {showHistory ? (
-                                    <ChevronUp className="w-3.5 h-3.5" />
-                                ) : (
-                                    <History className="w-3.5 h-3.5" />
-                                )}
-                                <span className="hidden sm:inline">{t.history}</span>
+                                <History className="w-3.5 h-3.5" />
                             </button>
                         )}
                         <button
@@ -286,81 +282,100 @@ export default function BudgetCycle({ onCycleChange }) {
                     </div>
                 )}
 
-                {/* History */}
-                {showHistory && history.length > 0 && (
-                    <div className="mt-4 pt-4 space-y-1" style={{ borderTop: '1px solid var(--border)' }}>
-                        {history.map((h) => {
-                            const startDate = new Date(h.start_date);
-                            const endDate = h.end_date ? new Date(h.end_date) : new Date();
-                            const duration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-
-                            return (
-                                <div
-                                    key={h.id}
-                                    className="group flex items-center gap-3 p-2.5 rounded transition-colors"
-                                    style={{
-                                        background: h.is_active ? 'var(--accent-dim)' : 'transparent',
-                                        border: h.is_active ? '1px solid var(--accent-mid)' : '1px solid transparent',
-                                    }}
-                                >
-                                    <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{
-                                        background: h.is_active ? 'var(--accent)' : 'var(--border-strong)',
-                                        color: h.is_active ? '#0B0F1A' : 'var(--text-muted)',
-                                    }}>
-                                        <span className="text-[9px] font-semibold font-data">
-                                            {h.is_active ? `${30 - Math.min(duration, 30)}` : '✓'}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            {h.is_active && (
-                                                <span className="badge badge-green text-[9px] uppercase font-semibold">
-                                                    {t.active}
-                                                </span>
-                                            )}
-                                            <span className="text-xs font-data" style={{ color: 'var(--text-primary)' }}>
-                                                {formatDate(h.start_date)}
-                                            </span>
-                                            {h.end_date && (
-                                                <>
-                                                    <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>→</span>
-                                                    <span className="text-xs font-data" style={{ color: 'var(--text-secondary)' }}>{formatDate(h.end_date)}</span>
-                                                </>
-                                            )}
-                                        </div>
-                                        <span className="text-[10px] font-data" style={{ color: 'var(--text-muted)' }}>{duration}d</span>
-                                    </div>
-
-                                    <div className="text-right">
-                                        <span className="text-xs font-semibold font-data" style={{ color: 'var(--amount)' }}>
-                                            {formatCurrency(h.total_spent)}
-                                        </span>
-                                        <span className="text-[9px] block uppercase" style={{ color: 'var(--text-muted)' }}>{t.spent}</span>
-                                    </div>
-
-                                    <div className="flex gap-1">
-                                        <button
-                                            onClick={() => setSelectedCycleId(h.id)}
-                                            className="btn-secondary p-1.5 rounded"
-                                            title={t.viewAnalysis}
-                                        >
-                                            <BarChart3 className="w-3.5 h-3.5" style={{ color: 'var(--text-secondary)' }} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteCycle(h.id)}
-                                            className="btn-secondary p-1.5 rounded icon-btn-danger"
-                                            title={isRTL ? 'حذف الدورة' : 'Delete cycle'}
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" style={{ color: 'var(--danger)' }} />
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
             </div>
+
+            {/* History Modal — keeps the rail slim; full list lives here */}
+            {showHistory && history.length > 0 && (
+                <div
+                    className="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4"
+                    onClick={() => setShowHistory(false)}
+                >
+                    <div
+                        className="panel w-full max-w-md animate-fade-up overflow-hidden"
+                        style={{ background: 'var(--surface-raised)' }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="p-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--border)' }}>
+                            <h3 className="font-heading text-sm" style={{ color: 'var(--text-primary)' }}>{t.history}</h3>
+                            <button onClick={() => setShowHistory(false)} className="icon-btn">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <div className="p-4 space-y-1 max-h-[60vh] overflow-y-auto">
+                            {history.map((h) => {
+                                const startDate = new Date(h.start_date);
+                                const endDate = h.end_date ? new Date(h.end_date) : new Date();
+                                const duration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+
+                                return (
+                                    <div
+                                        key={h.id}
+                                        className="group flex items-center gap-3 p-2.5 rounded transition-colors"
+                                        style={{
+                                            background: h.is_active ? 'var(--accent-dim)' : 'transparent',
+                                            border: h.is_active ? '1px solid var(--accent-mid)' : '1px solid transparent',
+                                        }}
+                                    >
+                                        <div className="w-6 h-6 rounded flex items-center justify-center shrink-0" style={{
+                                            background: h.is_active ? 'var(--accent)' : 'var(--border-strong)',
+                                            color: h.is_active ? '#0B0F1A' : 'var(--text-muted)',
+                                        }}>
+                                            <span className="text-[9px] font-semibold font-data">
+                                                {h.is_active ? `${30 - Math.min(duration, 30)}` : '✓'}
+                                            </span>
+                                        </div>
+
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                {h.is_active && (
+                                                    <span className="badge badge-green text-[9px] uppercase font-semibold">
+                                                        {t.active}
+                                                    </span>
+                                                )}
+                                                <span className="text-xs font-data" style={{ color: 'var(--text-primary)' }}>
+                                                    {formatDate(h.start_date)}
+                                                </span>
+                                                {h.end_date && (
+                                                    <>
+                                                        <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>→</span>
+                                                        <span className="text-xs font-data" style={{ color: 'var(--text-secondary)' }}>{formatDate(h.end_date)}</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                            <span className="text-[10px] font-data" style={{ color: 'var(--text-muted)' }}>{duration}d</span>
+                                        </div>
+
+                                        <div className="text-right">
+                                            <span className="text-xs font-semibold font-data" style={{ color: 'var(--amount)' }}>
+                                                {formatCurrency(h.total_spent)}
+                                            </span>
+                                            <span className="text-[9px] block uppercase" style={{ color: 'var(--text-muted)' }}>{t.spent}</span>
+                                        </div>
+
+                                        <div className="flex gap-1">
+                                            <button
+                                                onClick={() => { setSelectedCycleId(h.id); setShowHistory(false); }}
+                                                className="btn-secondary p-1.5 rounded"
+                                                title={t.viewAnalysis}
+                                            >
+                                                <BarChart3 className="w-3.5 h-3.5" style={{ color: 'var(--text-secondary)' }} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteCycle(h.id)}
+                                                className="btn-secondary p-1.5 rounded icon-btn-danger"
+                                                title={isRTL ? 'حذف الدورة' : 'Delete cycle'}
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" style={{ color: 'var(--danger)' }} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Start Cycle Modal */}
             {showModal && (

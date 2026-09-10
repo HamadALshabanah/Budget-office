@@ -14,11 +14,11 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 def aggregate(
     cycle_id: int,
     group_by: Literal["bucket", "day", "merchant"],
-    scope: int | None = None,  # drill level: only count inside this subtree
+    scope: int | None = None,  # this is category_id travel food etc
     user=Depends(get_current_user_or_apikey),
     db=Depends(get_db_session),
 ):
-    """[{bucket, bucket_id, total, count}] — one GROUP BY, two knobs."""
+    """ a drill down function that returns [{bucket, bucket_id, total, count}] — one GROUP BY, two knobs."""
     # scope    = WHERE    (only rows inside this subtree)
     # group_by = GROUP BY (bucket / day / merchant)
 
@@ -26,12 +26,14 @@ def aggregate(
     if not cycle:
         raise HTTPException(status_code=404, detail="Cycle not found")
 
-    def naive(dt):  # strip tzinfo so datetime comparisons never blow up
-        return dt.replace(tzinfo=None) if dt and dt.tzinfo else dt
+    
 
-    cycle_start = naive(cycle.start_date)
-    cycle_end = naive(cycle.end_date) or datetime.datetime.now()
-
+    cycle_start = cycle.start_date.replace(tzinfo=None) if cycle.start_date and cycle.start_date.tzinfo else cycle.start_date
+    # Active cycles have no end_date yet — bound the range by "now", same as the other cycle queries
+    raw_end = cycle.end_date or datetime.datetime.now()
+    cycle_end = raw_end.replace(tzinfo=None) if raw_end.tzinfo else raw_end
+    
+    # Rows of invoices that are successful and within the cycle's date range
     rows = db.query(Invoice).filter(
         Invoice.user_id == user.id,
         Invoice.extraction_status == "success",
@@ -40,10 +42,13 @@ def aggregate(
     ).all()
 
     # ALL my categories as {id: node}, so we can climb parents
-    cats = {
-        cat.id: cat
-        for cat in db.query(Category).filter(Category.user_id == user.id).all()
-    }
+    cats={}
+    for cat in db.query(Category).filter(Category.user_id == user.id).all():
+        cats[cat.id] = cat
+    # cats = {
+    #     cat.id: cat
+    #     for cat in db.query(Category).filter(Category.user_id == user.id).all()
+    # }
 
     if scope is not None:
         if scope not in cats:
@@ -59,12 +64,12 @@ def aggregate(
         # NULL tags fail this check automatically -> excluded when scoped
         rows = [r for r in rows if r.category_id in family]
 
-    # --- 5. the pile loop -----------------------------------------------------
-    piles = {}      # label -> {"total": x, "count": n}
-    pile_ids = {}   # label -> category id of the bucket (bucket mode only)
+    #  the tree loop
+    tree = {}      # label -> {"total": x, "count": n}
+    tree_ids = {}   # label -> category id of the bucket (bucket mode only)
 
     for inv in rows:
-        # 1) decide which pile this invoice belongs to
+        # decide which tree this invoice belongs to
         if group_by == "merchant":
             label = inv.merchant or "Unknown"
         elif group_by == "day":
@@ -86,20 +91,20 @@ def aggregate(
                     label = "Uncategorized"  # broken chain safety net
                 else:
                     label = node.name
-                    pile_ids[label] = node.id
+                    tree_ids[label] = node.id
 
         # 2) dump it in
-        if label not in piles:
-            piles[label] = {"total": 0.0, "count": 0}
-        piles[label]["total"] += inv.amount or 0
-        piles[label]["count"] += 1
+        if label not in tree:
+            tree[label] = {"total": 0.0, "count": 0}
+        tree[label]["total"] += inv.amount or 0
+        tree[label]["count"] += 1
 
-    # --- 6. dict -> sorted list -----------------------------------------------
+    # dict -> sorted list 
     result = []
-    for label, p in piles.items():
+    for label, p in tree.items():
         result.append({
             "bucket": label,
-            "bucket_id": pile_ids.get(label),
+            "bucket_id": tree_ids.get(label),
             "total": round(p["total"], 2),
             "count": p["count"],
         })

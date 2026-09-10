@@ -560,9 +560,11 @@ body {
   transform: scale(0.98);
 }
 
-/* Header — notebook cover style */
+/* Header — notebook cover style, translucent with blur so content glides beneath it */
 .notebook-header {
-  background: var(--surface) !important;
-  border-bottom: 2px solid rgba(92, 110, 61, 0.25) !important;
+  background: color-mix(in srgb, var(--surface) 90%, transparent) !important;
+  backdrop-filter: blur(8px) saturate(1.1);
+  -webkit-backdrop-filter: blur(8px) saturate(1.1);
+  border-bottom: 1px solid rgba(92, 110, 61, 0.25) !important;
   box-shadow: 0 2px 8px rgba(42, 42, 32, 0.10) !important;
 }

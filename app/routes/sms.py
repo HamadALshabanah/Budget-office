@@ -20,14 +20,11 @@ def extract_amount(sms: str) -> dict:
             key, value = line.split(":", 1)
             kv[key.strip()] = value.strip()
 
-    try:
-        if "مبلغ" in kv and "لدى" in kv:
-            data["amount"] = float(kv["مبلغ"].replace("SAR", "").strip())
-            data["merchant"] = kv["لدى"]
-            data["extraction_status"] = "success"
-            data["category_id"] = classify_merchant(data["merchant"])
-    except ValueError:
-        print(f"Error converting amount in SMS: {sms}")
+    if "مبلغ" in kv and "لدى" in kv:
+        data["amount"] = float(kv["مبلغ"].replace("SAR", "").strip())
+        data["merchant"] = kv["لدى"]
+        data["extraction_status"] = "success"
+        data["category_id"] = classify_merchant(data["merchant"])
     return data
 
 
