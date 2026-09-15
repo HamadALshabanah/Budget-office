@@ -6,7 +6,7 @@ import { updateInvoice, fetchCategories, deleteInvoice, fetchInvoices, getCurren
 import { flattenTree, shortPath, buildPathMap } from '../lib/categories';
 import CategorySelect from './CategorySelect';
 
-export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId }) {
+export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId, forcedCategory, onClearForced }) {
   const { t, language } = useLanguage();
   const isRTL = language === 'ar';
   const [invoices, setInvoices] = useState([]);
@@ -28,9 +28,11 @@ export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId 
   }, [search]);
 
   useEffect(() => {
-    fetchCategories().then(setCategories).catch(console.error);
+    fetchCategories().then(d=> setCategories(Array.isArray(d)?d:[])).catch(()=> setCategories([]));
   }, []);
 
+  // forced filter from HeroAnswer Details
+  useEffect(()=>{ if(forcedCategory) setFilterCategory(''); }, [forcedCategory]);
   // Tree -> flat options + id->path lookup
   const categoryOptions = flattenTree(categories);
   const pathMap = buildPathMap(categories);
@@ -85,13 +87,10 @@ export default function InvoiceList({ refreshTrigger, onUpdate, selectedCycleId 
     loadInvoices();
   }, [loadInvoices]);
 
-  const hasActiveFilters = debouncedSearch || filterCategory || minAmount || maxAmount;
-
+  const hasActiveFilters = debouncedSearch || filterCategory || forcedCategory || minAmount || maxAmount;
   const clearFilters = () => {
-    setSearch('');
-    setFilterCategory('');
-    setMinAmount('');
-    setMaxAmount('');
+    setSearch(''); setFilterCategory(''); setMinAmount(''); setMaxAmount('');
+    if (onClearForced) onClearForced();
   };
 
   const handleEdit = async (invoice) => {

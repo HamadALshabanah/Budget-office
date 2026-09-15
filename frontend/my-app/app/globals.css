@@ -1,85 +1,85 @@
 @import "tailwindcss";
 
 :root {
-  /* Base — deep earthy moss-green leather notebook cover */
-  --base: #3A4A35;
-  --base-subtle: #D8DCCB;
-  --surface: #F7F3E8;          /* aged cream paper */
-  --surface-raised: #FBF8F0;
-  --surface-inset: #EFE9D8;
+  /* Soothing sage + warm stone — low contrast, easy on eyes */
+  --base: #EDE8E1;              /* warm stone canvas */
+  --base-subtle: #E7E2DA;
+  --surface: #FAF7F2;            /* soft paper */
+  --surface-raised: #FEFCF8;
+  --surface-inset: #F0EBE3;
 
-  /* Text — dark walnut ink on paper */
-  --text-primary: #2A2A20;
-  --text-secondary: #4F4A3C;
-  --text-tertiary: #7A7464;
-  --text-muted: #A8A294;
+  /* Text — soft ink (not pure black) */
+  --text-primary: #3C3A36;
+  --text-secondary: #5E5B57;
+  --text-tertiary: #8A8784;
+  --text-muted: #A9A6A3;
 
-  /* Borders — soft pencil lines */
-  --border: rgba(42, 42, 32, 0.14);
-  --border-strong: rgba(42, 42, 32, 0.26);
-  --border-focus: #5C6E3D;
+  /* Borders — barely there */
+  --border: rgba(60, 58, 54, 0.08);
+  --border-strong: rgba(60, 58, 54, 0.14);
+  --border-focus: #8FA68E;
 
-  /* Forest green — primary accent (earthy, harmonizes with cover) */
-  --accent: #5C6E3D;
-  --accent-dim: rgba(92, 110, 61, 0.14);
-  --accent-mid: #6B8E4E;
+  /* Sage green — desaturated, calm */
+  --accent: #7A9B7D;
+  --accent-dim: rgba(122, 155, 125, 0.12);
+  --accent-mid: #8FAE92;
 
-  /* Amount — deep moss ink */
-  --amount: #4A5D3A;
-  --amount-dim: rgba(74, 93, 58, 0.10);
+  /* Amount — muted sage-ink */
+  --amount: #6B8A6E;
+  --amount-dim: rgba(107, 138, 110, 0.08);
 
-  /* Danger — muted brick red */
-  --danger: #9C3A3A;
-  --danger-dim: rgba(156, 58, 58, 0.09);
+  /* Danger — dusty rose, not brick */
+  --danger: #C07A7A;
+  --danger-dim: rgba(192, 122, 122, 0.09);
 
-  /* Warning — warm ochre/amber */
-  --warning: #B8853A;
-  --warning-dim: rgba(184, 133, 58, 0.10);
+  /* Warning — soft clay */
+  --warning: #C9A87A;
+  --warning-dim: rgba(201, 168, 122, 0.10);
 
-  /* Gauge fills */
-  --fill-healthy: rgba(92, 110, 61, 0.10);
-  --fill-caution: rgba(184, 133, 58, 0.08);
-  --fill-danger: rgba(156, 58, 58, 0.07);
+  /* Gauge fills — very light */
+  --fill-healthy: rgba(122, 155, 125, 0.08);
+  --fill-caution: rgba(201, 168, 122, 0.07);
+  --fill-danger: rgba(192, 122, 122, 0.06);
 
-  /* Notebook shadows — stacked paper on green leather */
-  --shadow-sm: 0 1px 3px rgba(42, 42, 32, 0.10);
-  --shadow-md: 0 2px 8px rgba(42, 42, 32, 0.12);
-  --shadow-lg: 0 6px 20px rgba(42, 42, 32, 0.16);
+  /* Soft shadows */
+  --shadow-sm: 0 1px 3px rgba(60, 58, 54, 0.06);
+  --shadow-md: 0 2px 8px rgba(60, 58, 54, 0.07);
+  --shadow-lg: 0 6px 20px rgba(60, 58, 54, 0.09);
 
-  --glow-accent: 0 0 0 3px rgba(92, 110, 61, 0.22);
-  --glow-danger: 0 0 0 3px rgba(156, 58, 58, 0.16);
+  --glow-accent: 0 0 0 3px rgba(122, 155, 125, 0.14);
+  --glow-danger: 0 0 0 3px rgba(192, 122, 122, 0.12);
 }
 
 [data-theme="light"] {
-  --base: #3A4A35;
-  --base-subtle: #D8DCCB;
-  --surface: #F7F3E8;
-  --surface-raised: #FBF8F0;
-  --surface-inset: #EFE9D8;
-  --text-primary: #2A2A20;
-  --text-secondary: #4F4A3C;
-  --text-tertiary: #7A7464;
-  --text-muted: #A8A294;
-  --border: rgba(42, 42, 32, 0.14);
-  --border-strong: rgba(42, 42, 32, 0.26);
-  --border-focus: #5C6E3D;
-  --accent: #5C6E3D;
-  --accent-dim: rgba(92, 110, 61, 0.14);
-  --accent-mid: #6B8E4E;
-  --amount: #4A5D3A;
-  --amount-dim: rgba(74, 93, 58, 0.10);
-  --danger: #9C3A3A;
-  --danger-dim: rgba(156, 58, 58, 0.09);
-  --warning: #B8853A;
-  --warning-dim: rgba(184, 133, 58, 0.10);
-  --fill-healthy: rgba(92, 110, 61, 0.10);
-  --fill-caution: rgba(184, 133, 58, 0.08);
-  --fill-danger: rgba(156, 58, 58, 0.07);
-  --shadow-sm: 0 1px 3px rgba(42, 42, 32, 0.10);
-  --shadow-md: 0 2px 8px rgba(42, 42, 32, 0.12);
-  --shadow-lg: 0 6px 20px rgba(42, 42, 32, 0.16);
-  --glow-accent: 0 0 0 3px rgba(92, 110, 61, 0.20);
-  --glow-danger: 0 0 0 3px rgba(156, 58, 58, 0.14);
+  --base: #EDE8E1;
+  --base-subtle: #E7E2DA;
+  --surface: #FAF7F2;
+  --surface-raised: #FEFCF8;
+  --surface-inset: #F0EBE3;
+  --text-primary: #3C3A36;
+  --text-secondary: #5E5B57;
+  --text-tertiary: #8A8784;
+  --text-muted: #A9A6A3;
+  --border: rgba(60, 58, 54, 0.08);
+  --border-strong: rgba(60, 58, 54, 0.14);
+  --border-focus: #8FA68E;
+  --accent: #7A9B7D;
+  --accent-dim: rgba(122, 155, 125, 0.12);
+  --accent-mid: #8FAE92;
+  --amount: #6B8A6E;
+  --amount-dim: rgba(107, 138, 110, 0.08);
+  --danger: #C07A7A;
+  --danger-dim: rgba(192, 122, 122, 0.09);
+  --warning: #C9A87A;
+  --warning-dim: rgba(201, 168, 122, 0.10);
+  --fill-healthy: rgba(122, 155, 125, 0.08);
+  --fill-caution: rgba(201, 168, 122, 0.07);
+  --fill-danger: rgba(192, 122, 122, 0.06);
+  --shadow-sm: 0 1px 3px rgba(60, 58, 54, 0.06);
+  --shadow-md: 0 2px 8px rgba(60, 58, 54, 0.07);
+  --shadow-lg: 0 6px 20px rgba(60, 58, 54, 0.09);
+  --glow-accent: 0 0 0 3px rgba(122, 155, 125, 0.14);
+  --glow-danger: 0 0 0 3px rgba(192, 122, 122, 0.12);
 }
 
 @theme inline {
@@ -562,9 +562,9 @@ body {
 
 /* Header — notebook cover style, translucent with blur so content glides beneath it */
 .notebook-header {
-  background: color-mix(in srgb, var(--surface) 90%, transparent) !important;
-  backdrop-filter: blur(8px) saturate(1.1);
-  -webkit-backdrop-filter: blur(8px) saturate(1.1);
-  border-bottom: 1px solid rgba(92, 110, 61, 0.25) !important;
-  box-shadow: 0 2px 8px rgba(42, 42, 32, 0.10) !important;
+  background: color-mix(in srgb, var(--surface-raised) 92%, transparent) !important;
+  backdrop-filter: blur(8px) saturate(1.03);
+  -webkit-backdrop-filter: blur(8px) saturate(1.03);
+  border-bottom: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-sm) !important;
 }

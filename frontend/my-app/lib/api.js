@@ -71,7 +71,9 @@ export async function fetchCategories() {
     const res = await fetch(`${API_URL}/categories/`, {
         headers: { ...getAuthHeader() },
     });
-    return res.json();
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.detail || 'Failed to load categories');
+    return Array.isArray(data) ? data : [];
 }
 
 export async function addCategory(data) {
@@ -112,7 +114,9 @@ export async function fetchRules() {
     const res = await fetch(`${API_URL}/rules/`, {
         headers: { ...getAuthHeader() },
     });
-    return res.json();
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new Error(data?.detail || 'Failed to load rules');
+    return Array.isArray(data) ? data : [];
 }
 
 export async function addRule(rule) {

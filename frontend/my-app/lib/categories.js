@@ -3,8 +3,9 @@
 // Flatten the tree into selectable options with full-path labels:
 // Expense / Coffee / Shovel Coffee
 export function flattenTree(nodes, prefix = '') {
+  if (!Array.isArray(nodes)) return [];
   const out = [];
-  for (const n of nodes || []) {
+  for (const n of nodes) {
     const path = prefix ? `${prefix} / ${n.name}` : n.name;
     out.push({ id: n.id, name: n.name, path, level: n.level, category_limit: n.category_limit });
     out.push(...flattenTree(n.children, path));
@@ -30,7 +31,8 @@ export function buildPathMap(tree) {
 export function subtreeIdSet(nodes, rootId) {
   const out = new Set([rootId]);
   const walk = (list, inside) => {
-    for (const n of list || []) {
+    if (!Array.isArray(list)) return;
+    for (const n of list) {
       if (inside || n.id === rootId) {
         out.add(n.id);
         walk(n.children, true);
