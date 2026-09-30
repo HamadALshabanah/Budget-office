@@ -33,16 +33,21 @@ def cycle_invoices(db, cycle: BudgetCycle, user_id: int) -> list[Invoice]:
 
 
 def bucket_by_main(db, user_id: int):
-    """Map every category node to its level-1 ancestor name (its 'main' bucket)."""
+    """Map every category node to its 'main' bucket name.
+
+    The bucket is the closest node that is itself a main category
+    (level <= 1), matching /analytics. Using level == 1 only would drop
+    categories a user created at top level (level 0) into "Uncategorized".
+    """
     cats = {c.id: c for c in db.query(Category).filter_by(user_id=user_id)}
 
     def main_name(cid):
-        node, top = cats.get(cid), None
+        node = cats.get(cid)
         while node:
-            if node.level == 1:
-                top = node.name
+            if node.level <= 1:
+                return node.name
             node = cats.get(node.parent_id) if node.parent_id else None
-        return top
+        return None
 
     return cats, main_name
 
@@ -261,8 +266,20 @@ def cycle_analysis(cycle_id: int, current_user=Depends(get_current_user_or_apike
             spent_by_main[bucket] = spent_by_main.get(bucket, 0) + (inv.amount or 0)
             categorized += inv.amount or 0
 
+        # Categories are user-scoped, not cycle-scoped, so a category (and the
+        # limit attached to it) carries into the next cycle. A fresh cycle has no
+        # invoices yet, so seed every budgeted bucket with 0 spend — otherwise the
+        # breakdown is empty and the UI drops every category card until the first
+        # transaction of the cycle arrives.
+        for bucket in rule_limits:
+            spent_by_main.setdefault(bucket, 0.0)
+
         category_breakdown = []
-        for bucket, spent in sorted(spent_by_main.items(), key=lambda x: x[1], reverse=True):
+        for bucket, spent in sorted(
+            spent_by_main.items(),
+            key=lambda x: (x[1], rule_limits.get(x[0]) or 0),
+            reverse=True,
+        ):
             limit = rule_limits.get(bucket)
             category_breakdown.append({
                 "category": bucket,
